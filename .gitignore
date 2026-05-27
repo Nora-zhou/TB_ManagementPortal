@@ -1,0 +1,39 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+.eggs/
+dist/
+build/
+*.egg
+venv/
+.venv/
+env/
+.env
+
+# Database
+*.db
+*.sqlite3
+
+# Node / Frontend
+node_modules/
+frontend/dist/
+frontend/.vite/
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+*.swp
+*.swo
+
+# Data files (potentially large/sensitive)
+backend/data/*.xlsx
+backend/data/*.csv
