@@ -9,11 +9,12 @@ import OrderDashboard from './components/OrderDashboard.vue'
 import DataImport from './components/DataImport.vue'
 import SupplierManagement from './components/SupplierManagement.vue'
 import SupplierDashboard from './components/SupplierDashboard.vue'
+import HomeDashboard from './components/HomeDashboard.vue'
 
 const router = createRouter({
   history: createWebHashHistory(),
   routes: [
-    { path: '/', redirect: '/products' },
+    { path: '/', component: HomeDashboard },
     { path: '/products', component: ProductList },
     { path: '/products/:id', component: ProductDetail },
     { path: '/orders', component: OrderList },

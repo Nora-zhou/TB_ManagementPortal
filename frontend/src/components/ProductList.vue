@@ -3,6 +3,11 @@
     <div class="toolbar">
       <h2>商品列表</h2>
       <div class="filters">
+        <div class="store-filter">
+          <button :class="{ active: storeFilter === null }" @click="setStore(null)">全部</button>
+          <button :class="{ active: storeFilter === 1 }"    @click="setStore(1)">店铺1</button>
+          <button :class="{ active: storeFilter === 2 }"    @click="setStore(2)">店铺2</button>
+        </div>
         <input v-model="searchQ" placeholder="搜索商品名称…" @keyup.enter="applyFilters" />
         <input v-model.number="minPrice" type="number" placeholder="最低价" min="0" />
         <input v-model.number="maxPrice" type="number" placeholder="最高价" min="0" />
@@ -73,8 +78,15 @@ const maxPrice = ref(null)
 const activeQ = ref('')
 const activeMin = ref(null)
 const activeMax = ref(null)
+const storeFilter = ref(null)  // null = 全部, 1 = 店铺1, 2 = 店铺2
 
-const hasFilter = computed(() => activeQ.value || activeMin.value != null || activeMax.value != null)
+function setStore(val) {
+  storeFilter.value = val
+  page.value = 1
+  load()
+}
+
+const hasFilter = computed(() => activeQ.value || activeMin.value != null || activeMax.value != null || storeFilter.value != null)
 
 const sortOrder = ref('none')
 const sortArrow = computed(() => {
@@ -104,6 +116,7 @@ async function load() {
     if (activeQ.value) params.q = activeQ.value
     if (activeMin.value != null) params.min_price = activeMin.value
     if (activeMax.value != null) params.max_price = activeMax.value
+    if (storeFilter.value != null) params.store = storeFilter.value
     const data = await fetchProducts(params)
     items.value = data.items
     total.value = data.total
@@ -140,6 +153,7 @@ function clearFilters() {
   activeQ.value = ''
   activeMin.value = null
   activeMax.value = null
+  storeFilter.value = null
   page.value = 1
   load()
 }
@@ -169,6 +183,15 @@ onMounted(load)
   font-size: 22px; font-weight: 400; letter-spacing: -0.2px; color: var(--text);
 }
 .filters { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.store-filter { display: flex; gap: 4px; }
+.store-filter button {
+  padding: 5px 12px; border-radius: 9999px; font-size: 12px;
+  background: var(--surface); color: var(--text-secondary);
+  border: 1px solid var(--border); box-shadow: var(--shadow-soft);
+}
+.store-filter button.active {
+  background: #000; color: #fff; border-color: #000; box-shadow: var(--shadow-card);
+}
 .filters input {
   padding: 7px 12px; border: 1px solid var(--border); border-radius: 8px;
   width: 140px; font-size: 13px; background: var(--surface); color: var(--text);

@@ -89,6 +89,15 @@ export async function getStatusDist(params = {}) {
 }
 
 /**
+ * Sync orders from sub-orders table (aggregation).
+ */
+export async function syncOrdersFromSubOrders() {
+  const resp = await fetch(`${BASE}/sync-from-sub-orders`, { method: 'POST' })
+  if (!resp.ok) throw new Error((await resp.json()).detail || resp.statusText)
+  return resp.json()
+}
+
+/**
  * Fetch top products ranking.
  * @param {{sort_by?: 'revenue'|'count', limit?: number, start_date?: string, end_date?: string}} params
  */

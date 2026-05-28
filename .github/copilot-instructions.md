@@ -1,5 +1,5 @@
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan
-at specs/008-multi-store/plan.md
+at specs/009-home-profit-dashboard/plan.md
 <!-- SPECKIT END -->

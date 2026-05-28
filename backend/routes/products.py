@@ -459,6 +459,7 @@ def list_products(
     q: Optional[str] = Query(default=None),
     min_price: Optional[float] = Query(default=None),
     max_price: Optional[float] = Query(default=None),
+    store: Optional[int] = Query(default=None),
 ) -> ProductListResponse:
     query = select(Product)
     if q:
@@ -467,6 +468,8 @@ def list_products(
         query = query.where(Product.current_price >= min_price)
     if max_price is not None:
         query = query.where(Product.current_price <= max_price)
+    if store is not None:
+        query = query.where(Product.store == store)
 
     total = session.exec(
         select(func.count()).select_from(query.subquery())

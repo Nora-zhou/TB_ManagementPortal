@@ -296,3 +296,43 @@ class PurchaseOrderDetailResponse(BaseModel):
     page_size: int
     total: int
     items: list[PurchaseOrderDetail]
+
+
+# ---------------------------------------------------------------------------
+# Profit Monthly schemas (009-home-profit-dashboard)
+# ---------------------------------------------------------------------------
+
+class ProfitMonthlySeries(BaseModel):
+    revenue_s1:    list[float]
+    revenue_s2:    list[float]
+    cost_s1:       list[float]
+    cost_s2:       list[float]
+    refund_s1:     list[float]
+    refund_s2:     list[float]
+    profit_s1:     list[float]
+    profit_s2:     list[float]
+    total_revenue: list[float]
+    total_cost:    list[float]
+    total_refund:  list[float]
+    total_profit:  list[float]
+
+
+class ProfitMonthlyKPI(BaseModel):
+    revenue_s1:    float
+    revenue_s2:    float
+    cost_s1:       float
+    cost_s2:       float
+    refund_s1:     float
+    refund_s2:     float
+    profit_s1:     float
+    profit_s2:     float
+    total_revenue: float
+    total_cost:    float
+    total_refund:  float
+    total_profit:  float
+
+
+class ProfitMonthlyResponse(BaseModel):
+    months: list[str]
+    series: ProfitMonthlySeries
+    kpi:    ProfitMonthlyKPI

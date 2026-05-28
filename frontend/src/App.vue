@@ -13,6 +13,7 @@ const route = useRoute()
         </router-link>
 
         <nav class="nav-links">
+          <router-link to="/" class="nav-link" active-class="nav-link--active" exact-active-class="nav-link--active">首页</router-link>
           <router-link to="/products" class="nav-link" active-class="nav-link--active">商品列表</router-link>
           <router-link to="/orders/dashboard" class="nav-link" active-class="nav-link--active">订单分析</router-link>
           <router-link to="/orders" class="nav-link" active-class="nav-link--active" exact-active-class="nav-link--active">订单列表</router-link>

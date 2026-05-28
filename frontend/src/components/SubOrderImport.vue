@@ -45,6 +45,7 @@
 <script setup>
 import { ref } from 'vue'
 import { importSubOrders } from '../api/sub_orders.js'
+import { syncOrdersFromSubOrders } from '../api/orders.js'
 
 const props = defineProps({
   store: { type: Number, default: 1 }
@@ -69,6 +70,8 @@ async function upload() {
   errorMsg.value = null
   try {
     result.value = await importSubOrders(selectedFile.value, props.store)
+    // Auto-sync to orders table so order list reflects the new data
+    await syncOrdersFromSubOrders()
   } catch (e) {
     errorMsg.value = e.message
   } finally {

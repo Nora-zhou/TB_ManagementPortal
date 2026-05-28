@@ -7,6 +7,7 @@ export async function fetchProducts(params = {}) {
   if (params.q) query.set('q', params.q)
   if (params.min_price != null) query.set('min_price', params.min_price)
   if (params.max_price != null) query.set('max_price', params.max_price)
+  if (params.store != null) query.set('store', params.store)
   const resp = await fetch(`${BASE}?${query}`)
   if (!resp.ok) throw new Error((await resp.json()).detail || resp.statusText)
   return resp.json()

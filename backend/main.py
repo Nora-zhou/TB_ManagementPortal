@@ -8,6 +8,7 @@ from routes.products import router as products_router
 from routes.orders import router as orders_router
 from routes.sub_orders import router as sub_orders_router
 from routes.purchase_orders import router as purchase_orders_router
+from routes.stats import router as stats_router
 
 
 @asynccontextmanager
@@ -35,6 +36,7 @@ app.include_router(products_router, prefix="/api")
 app.include_router(orders_router, prefix="/api")
 app.include_router(sub_orders_router, prefix="/api")
 app.include_router(purchase_orders_router, prefix="/api")
+app.include_router(stats_router, prefix="/api")
 
 
 @app.get("/health")
