@@ -8,8 +8,8 @@ const route = useRoute()
     <header class="site-nav">
       <div class="nav-inner">
         <router-link to="/products" class="nav-brand">
-          <span class="brand-icon">🌱</span>
-          <span class="brand-name">电商数据分析</span>
+          <span class="brand-icon">💰</span>
+          <span class="brand-name">我的宝库</span>
         </router-link>
 
         <nav class="nav-links">
