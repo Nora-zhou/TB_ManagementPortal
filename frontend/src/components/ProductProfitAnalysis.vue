@@ -6,7 +6,7 @@ import {
   saveSKUCosts,
   fetchSKUCostSuggest,
   fetchProfitSummary,
-  fetchProfitMonthly,
+  fetchProductProfitMonthly,
 } from '../api/products.js'
 
 const props = defineProps({ productId: { type: Number, required: true } })
@@ -50,7 +50,7 @@ async function loadSummary() {
 async function loadMonthly() {
   loadingMonthly.value = true
   try {
-    const data = await fetchProfitMonthly(props.productId)
+    const data = await fetchProductProfitMonthly(props.productId)
     monthly.value = (data.months || []).slice(-12)
   } catch {
     monthly.value = []

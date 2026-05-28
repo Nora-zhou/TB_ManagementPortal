@@ -850,7 +850,7 @@ def suggest_sku_cost(product_id: int, session: SessionDep) -> ProductSKUCostSugg
                 FROM purchaseorder
                 WHERE goods_title LIKE :pattern
                   AND goods_total IS NOT NULL
-                  AND status NOT IN ('等待买家付款', '退款中')
+                  AND status NOT IN ('等待买家付款', '退款中', '交易关闭')
             """),
             {"pattern": pattern},
         ).fetchone()

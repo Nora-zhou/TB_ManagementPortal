@@ -50,7 +50,7 @@
       </tbody>
     </table>
 
-    <div v-else-if="!loading" class="empty">暂无商品，请先<router-link to="/products/import">导入商品目录</router-link></div>
+    <div v-else-if="!loading" class="empty">暂无商品，请先<router-link to="/import">导入商品目录</router-link></div>
     <div v-if="loading" class="loading">加载中…</div>
 
     <div v-if="total > pageSize" class="pagination">

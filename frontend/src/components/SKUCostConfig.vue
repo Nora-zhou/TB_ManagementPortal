@@ -323,6 +323,7 @@ onMounted(loadProducts)
             <span class="product-id-text">{{ product.taobao_item_id }}</span>
             <span class="product-id-copy">{{ copiedId === product.taobao_item_id ? '✓' : '⎘' }}</span>
           </span>
+          <span class="sold-count" title="累计销量">已售 {{ product.sold_90d ?? 0 }} 件</span>
           <span class="sku-badge" :class="skuBadgeClass(product)">
             <template v-if="productState[product.taobao_item_id]?.skuItems.length > 0">
               <template v-if="productState[product.taobao_item_id].configuredCount === 0">
@@ -581,6 +582,7 @@ onMounted(loadProducts)
   transition: color 0.12s;
 }
 .product-id:hover .product-id-copy { color: #4a7ef5; }
+.sold-count { font-size: 12px; color: #888; flex-shrink: 0; }
 .sku-badge    { font-size: 12px; color: #888; background: #f2f2f2; padding: 2px 8px; border-radius: 20px; flex-shrink: 0; }
 .sku-badge--done    { background: #e6f9ee; color: #1a8c4e; }
 .sku-badge--partial { background: #fff4e0; color: #b07800; }

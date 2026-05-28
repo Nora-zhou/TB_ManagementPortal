@@ -115,7 +115,7 @@ export async function fetchProfitSummary(id) {
   return resp.json()
 }
 
-export async function fetchProfitMonthly(id) {
+export async function fetchProductProfitMonthly(id) {
   const resp = await fetch(`${BASE}/${id}/profit-monthly`)
   if (!resp.ok) throw new Error((await resp.json()).detail || resp.statusText)
   return resp.json()
