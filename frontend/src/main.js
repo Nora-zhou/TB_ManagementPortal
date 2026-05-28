@@ -4,6 +4,7 @@ import './style.css'
 import App from './App.vue'
 import ProductList from './components/ProductList.vue'
 import ProductDetail from './components/ProductDetail.vue'
+import SKUCostConfig from './components/SKUCostConfig.vue'
 import OrderList from './components/OrderList.vue'
 import OrderDashboard from './components/OrderDashboard.vue'
 import DataImport from './components/DataImport.vue'
@@ -16,6 +17,7 @@ const router = createRouter({
   routes: [
     { path: '/', component: HomeDashboard },
     { path: '/products', component: ProductList },
+    { path: '/products/sku-costs', component: SKUCostConfig },
     { path: '/products/:id', component: ProductDetail },
     { path: '/orders', component: OrderList },
     { path: '/orders/dashboard', component: OrderDashboard },

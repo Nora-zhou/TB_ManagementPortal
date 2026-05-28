@@ -2,15 +2,16 @@ import csv
 import io
 import re
 import openpyxl
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone, timedelta, date
 from pathlib import Path
 from typing import Annotated, Optional
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Query, UploadFile, File, status
 from sqlmodel import Session, select, func, col
+from sqlalchemy import text, bindparam
 
 from database import get_session
-from models import Product, PriceSnapshot, SubOrder
+from models import Product, PriceSnapshot, SubOrder, ProductSKUCost
 from schemas import (
     AlertResponse,
     AlertUpdate,
@@ -21,6 +22,12 @@ from schemas import (
     ProductListResponse,
     ProductRead,
     TaobaoImportRequest,
+    ProductSKUCostRead,
+    ProductSKUCostBatchRequest,
+    ProductSKUCostSuggestResponse,
+    ProductProfitSummary,
+    ProductProfitMonthlyResponse,
+    ProductProfitMonthly,
 )
 from taobao_client import fetch_store_items
 
@@ -60,6 +67,8 @@ def _product_to_read(
     session: Session,
     include_snapshot_count: bool = False,
     sold_90d: int = 0,
+    gross_margin_pct: Optional[float] = None,
+    sku_cost_configured: Optional[bool] = None,
 ) -> ProductRead:
     snapshot_count = None
     if include_snapshot_count:
@@ -78,6 +87,8 @@ def _product_to_read(
         alert_status=_compute_alert_status(product),
         snapshot_count=snapshot_count,
         sold_90d=sold_90d,
+        gross_margin_pct=gross_margin_pct,
+        sku_cost_configured=sku_cost_configured,
     )
 
 
@@ -455,57 +466,167 @@ async def import_taobao(
 def list_products(
     session: SessionDep,
     page: int = Query(default=1, ge=1),
-    page_size: int = Query(default=20, ge=1, le=100),
+    page_size: int = Query(default=20, ge=1, le=5000),
     q: Optional[str] = Query(default=None),
     min_price: Optional[float] = Query(default=None),
     max_price: Optional[float] = Query(default=None),
     store: Optional[int] = Query(default=None),
+    sort_by: Optional[str] = Query(default=None),
+    sort_order: Optional[str] = Query(default="asc"),
 ) -> ProductListResponse:
-    query = select(Product)
+    base_query = select(Product)
     if q:
-        query = query.where(col(Product.name).contains(q))
+        base_query = base_query.where(col(Product.name).contains(q))
     if min_price is not None:
-        query = query.where(Product.current_price >= min_price)
+        base_query = base_query.where(Product.current_price >= min_price)
     if max_price is not None:
-        query = query.where(Product.current_price <= max_price)
+        base_query = base_query.where(Product.current_price <= max_price)
     if store is not None:
-        query = query.where(Product.store == store)
+        base_query = base_query.where(Product.store == store)
 
-    total = session.exec(
-        select(func.count()).select_from(query.subquery())
-    ).one()
+    def _batch_margin(item_ids: list[str]) -> dict[str, Optional[float]]:
+        if not item_ids:
+            return {}
+        sql = text("""
+            SELECT
+                so.taobao_item_id,
+                SUM(CASE WHEN so.status = '交易成功'
+                         THEN so.buyer_paid ELSE 0.0 END) -
+                SUM(CASE WHEN so.status = '交易成功'
+                         THEN CAST(so.refund_amount AS REAL) ELSE 0.0 END) AS revenue,
+                SUM(CASE WHEN so.status = '交易成功'
+                         THEN so.quantity * COALESCE(psc.purchase_cost, 0.0)
+                         ELSE 0.0 END) AS cost
+            FROM suborder so
+            LEFT JOIN productskucost psc
+                ON  psc.taobao_item_id = so.taobao_item_id
+                AND psc.sku_id         = COALESCE(so.product_attr, '')
+            WHERE so.taobao_item_id IN :ids
+            GROUP BY so.taobao_item_id
+        """).bindparams(bindparam('ids', expanding=True))
+        try:
+            rows = session.execute(sql, {"ids": list(item_ids)}).fetchall()
+        except Exception:
+            return {}
+        result: dict[str, Optional[float]] = {}
+        for row in rows:
+            rev = row[1] or 0.0
+            cost = row[2] or 0.0
+            result[row[0]] = round((rev - cost) / rev * 100, 2) if rev > 0 and cost > 0 else None
+        return result
 
-    products = session.exec(
-        query.order_by(Product.last_updated.desc())
-        .offset((page - 1) * page_size)
-        .limit(page_size)
-    ).all()
+    def _batch_sku_cost_status(item_ids: list[str]) -> dict[str, bool]:
+        """Return {taobao_item_id: True} if ALL SKUs have purchase_cost > 0, False otherwise."""
+        if not item_ids:
+            return {}
+        sql = text("""
+            SELECT
+                so.taobao_item_id,
+                COUNT(DISTINCT COALESCE(so.product_attr, '')) AS sku_count,
+                COUNT(DISTINCT CASE
+                    WHEN psc.purchase_cost IS NOT NULL AND psc.purchase_cost > 0
+                    THEN COALESCE(so.product_attr, '')
+                END) AS configured_count
+            FROM suborder so
+            LEFT JOIN productskucost psc
+                ON  psc.taobao_item_id = so.taobao_item_id
+                AND psc.sku_id         = COALESCE(so.product_attr, '')
+            WHERE so.taobao_item_id IN :ids
+            GROUP BY so.taobao_item_id
+        """).bindparams(bindparam('ids', expanding=True))
+        try:
+            rows = session.execute(sql, {"ids": list(item_ids)}).fetchall()
+        except Exception:
+            return {}
+        result: dict[str, bool] = {}
+        for row in rows:
+            sku_count = row[1] or 0
+            configured_count = row[2] or 0
+            if sku_count > 0:
+                result[row[0]] = (sku_count == configured_count)
+        return result
 
-    # Batch-aggregate sold_90d from SubOrder in one query (avoid N+1).
-    # Falls back to empty dict if SubOrder table doesn't exist yet (spec 005 not imported).
-    cutoff = datetime.now() - timedelta(days=90)
-    item_ids = [p.taobao_item_id for p in products]
-    try:
-        rows = session.exec(
-            select(SubOrder.taobao_item_id, func.sum(SubOrder.quantity))
-            .where(
-                col(SubOrder.taobao_item_id).in_(item_ids),
-                SubOrder.status == "交易成功",
-                SubOrder.refund_amount == "无退款申请",
-                SubOrder.paid_at >= cutoff,
-            )
-            .group_by(SubOrder.taobao_item_id)
+    def _batch_sold_90d(item_ids: list[str]) -> dict[str, int]:
+        if not item_ids:
+            return {}
+        cutoff = datetime.now() - timedelta(days=90)
+        try:
+            sold_rows = session.exec(
+                select(SubOrder.taobao_item_id, func.sum(SubOrder.quantity))
+                .where(
+                    col(SubOrder.taobao_item_id).in_(item_ids),
+                    SubOrder.status == "交易成功",
+                    SubOrder.refund_amount == "无退款申请",
+                    SubOrder.paid_at >= cutoff,
+                )
+                .group_by(SubOrder.taobao_item_id)
+            ).all()
+            return {tid: (qty or 0) for tid, qty in sold_rows}
+        except Exception:
+            return {}
+
+    sold_map: Optional[dict[str, int]] = None
+
+    if sort_by == "gross_margin_pct":
+        # Fetch all filtered products, compute margins, sort in Python, then slice
+        all_products = session.exec(base_query).all()
+        all_item_ids = [p.taobao_item_id for p in all_products]
+        margin_map = _batch_margin(all_item_ids)
+
+        def _margin_key(p: Product) -> float:
+            v = margin_map.get(p.taobao_item_id)
+            if v is None:
+                return float('inf') if (sort_order or "asc") == "asc" else float('-inf')
+            return v
+
+        reverse = (sort_order or "asc") == "desc"
+        sorted_all = sorted(all_products, key=_margin_key, reverse=reverse)
+        total = len(sorted_all)
+        products = sorted_all[(page - 1) * page_size: page * page_size]
+        item_ids = [p.taobao_item_id for p in products]
+        page_margin_map = {tid: margin_map.get(tid) for tid in item_ids}
+
+    elif sort_by == "sold_90d":
+        all_products = session.exec(base_query).all()
+        all_item_ids = [p.taobao_item_id for p in all_products]
+        all_sold_map = _batch_sold_90d(all_item_ids)
+
+        reverse = (sort_order or "desc") == "desc"
+        sorted_all = sorted(all_products, key=lambda p: all_sold_map.get(p.taobao_item_id, 0), reverse=reverse)
+        total = len(sorted_all)
+        products = sorted_all[(page - 1) * page_size: page * page_size]
+        item_ids = [p.taobao_item_id for p in products]
+        sold_map = {tid: all_sold_map.get(tid, 0) for tid in item_ids}
+        page_margin_map = _batch_margin(item_ids)
+
+    else:
+        total = session.exec(
+            select(func.count()).select_from(base_query.subquery())
+        ).one()
+        products = session.exec(
+            base_query.order_by(Product.last_updated.desc())
+            .offset((page - 1) * page_size)
+            .limit(page_size)
         ).all()
-        sold_map: dict[str, int] = {tid: (qty or 0) for tid, qty in rows}
-    except Exception:
-        sold_map = {}
+        item_ids = [p.taobao_item_id for p in products]
+        page_margin_map = _batch_margin(item_ids)
+
+    if sold_map is None:
+        sold_map = _batch_sold_90d(item_ids)
+
+    sku_cost_status_map = _batch_sku_cost_status(item_ids)
 
     return ProductListResponse(
         total=total,
         page=page,
         page_size=page_size,
         items=[
-            _product_to_read(p, session, sold_90d=sold_map.get(p.taobao_item_id, 0))
+            _product_to_read(
+                p, session,
+                sold_90d=sold_map.get(p.taobao_item_id, 0),
+                gross_margin_pct=page_margin_map.get(p.taobao_item_id),
+                sku_cost_configured=sku_cost_status_map.get(p.taobao_item_id),
+            )
             for p in products
         ],
     )
@@ -615,5 +736,267 @@ def get_order_price_series(
         total=total,
         truncated=truncated,
         points=points,
+    )
+
+
+# ---------------------------------------------------------------------------
+# 010-product-profit-analysis endpoints
+# ---------------------------------------------------------------------------
+
+def _get_product_or_404(product_id: int, session: Session) -> Product:
+    product = session.get(Product, product_id)
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+    return product
+
+
+# GET /api/products/{id}/sku-list  — distinct SKUs from sub-orders (for initialising the cost table)
+@router.get("/{product_id}/sku-list")
+def get_sku_list(product_id: int, session: SessionDep) -> list[dict]:
+    product = _get_product_or_404(product_id, session)
+    rows = session.execute(
+        text("""
+            SELECT DISTINCT
+                COALESCE(product_attr, '')            AS sku_id,
+                COALESCE(product_attr, '默认（无规格）') AS sku_name
+            FROM suborder
+            WHERE taobao_item_id = :item_id
+            ORDER BY sku_id
+        """),
+        {"item_id": product.taobao_item_id},
+    ).fetchall()
+    return [{"sku_id": r[0], "sku_name": r[1]} for r in rows]
+
+
+# GET /api/products/{id}/sku-costs
+@router.get("/{product_id}/sku-costs", response_model=list[ProductSKUCostRead])
+def get_sku_costs(product_id: int, session: SessionDep) -> list[ProductSKUCostRead]:
+    product = _get_product_or_404(product_id, session)
+    costs = session.exec(
+        select(ProductSKUCost).where(ProductSKUCost.taobao_item_id == product.taobao_item_id)
+    ).all()
+    return [ProductSKUCostRead.model_validate(c) for c in costs]
+
+
+# PUT /api/products/{id}/sku-costs
+@router.put("/{product_id}/sku-costs", response_model=list[ProductSKUCostRead])
+def upsert_sku_costs(
+    product_id: int,
+    payload: ProductSKUCostBatchRequest,
+    session: SessionDep,
+) -> list[ProductSKUCostRead]:
+    product = _get_product_or_404(product_id, session)
+    for item in payload.items:
+        # INSERT OR REPLACE via SQLite dialect
+        session.execute(
+            text("""
+                INSERT INTO productskucost (taobao_item_id, sku_id, sku_name, purchase_cost)
+                VALUES (:taobao_item_id, :sku_id, :sku_name, :purchase_cost)
+                ON CONFLICT(taobao_item_id, sku_id)
+                DO UPDATE SET sku_name = excluded.sku_name,
+                              purchase_cost = excluded.purchase_cost
+            """),
+            {
+                "taobao_item_id": product.taobao_item_id,
+                "sku_id": item.sku_id,
+                "sku_name": item.sku_name,
+                "purchase_cost": item.purchase_cost,
+            },
+        )
+    session.commit()
+    costs = session.exec(
+        select(ProductSKUCost).where(ProductSKUCost.taobao_item_id == product.taobao_item_id)
+    ).all()
+    return [ProductSKUCostRead.model_validate(c) for c in costs]
+
+
+# GET /api/products/{id}/sku-cost-suggest
+@router.get("/{product_id}/sku-cost-suggest", response_model=ProductSKUCostSuggestResponse)
+def suggest_sku_cost(product_id: int, session: SessionDep) -> ProductSKUCostSuggestResponse:
+    product = _get_product_or_404(product_id, session)
+
+    # Try progressively shorter keyword prefixes until a match is found.
+    # Split on spaces/punctuation and try the longest token first, then fall
+    # back to the first 6 / 4 characters of the product name.
+    import re as _re
+    name = product.name or ""
+    tokens = [t for t in _re.split(r"[\s\u3000\uff0c\u3001\uff08\uff09\u300a\u300b]+", name) if len(t) >= 2]
+    candidates = tokens + ([name[:6]] if len(name) >= 6 else []) + ([name[:4]] if len(name) >= 4 else [])
+    # deduplicate while preserving order
+    seen_kw: set = set()
+    keywords = []
+    for k in candidates:
+        if k not in seen_kw:
+            seen_kw.add(k)
+            keywords.append(k)
+
+    avg_cost, matched = None, 0
+    for kw in keywords:
+        pattern = f"%{kw}%"
+        row = session.execute(
+            text("""
+                SELECT
+                    -- Prefer unit_price; fall back to goods_total/quantity; last resort goods_total
+                    AVG(
+                        CASE
+                            WHEN unit_price IS NOT NULL AND unit_price > 0
+                                THEN unit_price
+                            WHEN quantity IS NOT NULL AND quantity > 0 AND goods_total IS NOT NULL
+                                THEN goods_total * 1.0 / quantity
+                            ELSE goods_total
+                        END
+                    ),
+                    COUNT(*)
+                FROM purchaseorder
+                WHERE goods_title LIKE :pattern
+                  AND goods_total IS NOT NULL
+                  AND status NOT IN ('等待买家付款', '退款中')
+            """),
+            {"pattern": pattern},
+        ).fetchone()
+        if row and row[1] and int(row[1]) > 0:
+            avg_cost = row[0]
+            matched = int(row[1])
+            break  # use first match
+
+    if avg_cost is not None and matched > 0:
+        return ProductSKUCostSuggestResponse(
+            available=True,
+            suggested_cost=round(avg_cost, 2),
+            matched_orders=matched,
+            note=f"基于{matched}条匹配采购单的 goods_total 均值（不含运费）",
+        )
+    return ProductSKUCostSuggestResponse(
+        available=False,
+        suggested_cost=None,
+        matched_orders=0,
+        note="暂无匹配采购单数据",
+    )
+
+
+# GET /api/products/{id}/profit-summary
+@router.get("/{product_id}/profit-summary", response_model=ProductProfitSummary)
+def get_profit_summary(product_id: int, session: SessionDep) -> ProductProfitSummary:
+    product = _get_product_or_404(product_id, session)
+    rows = session.execute(
+        text("""
+            SELECT
+                so.product_attr                                                              AS sku_id,
+                COALESCE(psc.purchase_cost, 0.0)                                             AS unit_cost,
+                CASE WHEN psc.purchase_cost IS NULL AND COALESCE(so.product_attr,'') != ''
+                     THEN 1 ELSE 0 END                                                       AS missing_cost,
+                SUM(CASE WHEN so.status = '交易成功'
+                         THEN so.quantity   ELSE 0   END)                                    AS units_sold,
+                SUM(CASE WHEN so.status = '交易成功'
+                         THEN so.buyer_paid ELSE 0.0 END)                                    AS gross_revenue,
+                SUM(CASE WHEN so.status = '交易成功'
+                         THEN CAST(so.refund_amount AS REAL) ELSE 0.0 END)                   AS refund
+            FROM suborder so
+            LEFT JOIN productskucost psc
+                ON  psc.taobao_item_id = so.taobao_item_id
+                AND psc.sku_id         = COALESCE(so.product_attr, '')
+            WHERE so.taobao_item_id = :item_id
+            GROUP BY so.product_attr, psc.purchase_cost
+        """),
+        {"item_id": product.taobao_item_id},
+    ).fetchall()
+
+    units_sold = sum(int(r[3] or 0) for r in rows)
+    revenue = sum((float(r[4] or 0) - float(r[5] or 0)) for r in rows)
+    cost = sum(int(r[3] or 0) * float(r[1] or 0) for r in rows)
+    gross_profit = revenue - cost
+    gross_margin_pct = round(gross_profit / revenue * 100, 2) if revenue > 0 else None
+    has_missing = any(int(r[2] or 0) for r in rows)
+    weighted_avg_cost = round(cost / units_sold, 4) if units_sold > 0 else 0.0
+
+    return ProductProfitSummary(
+        taobao_item_id=product.taobao_item_id,
+        units_sold=units_sold,
+        revenue=round(revenue, 2),
+        weighted_avg_cost=weighted_avg_cost,
+        cost=round(cost, 2),
+        gross_profit=round(gross_profit, 2),
+        gross_margin_pct=gross_margin_pct,
+        has_missing_sku_cost=has_missing,
+    )
+
+
+# GET /api/products/{id}/profit-monthly
+@router.get("/{product_id}/profit-monthly", response_model=ProductProfitMonthlyResponse)
+def get_profit_monthly(product_id: int, session: SessionDep) -> ProductProfitMonthlyResponse:
+    product = _get_product_or_404(product_id, session)
+    today = date.today()
+    # Compute start_month: 12 calendar months back
+    y = today.year
+    m = today.month - 12
+    while m <= 0:
+        m += 12
+        y -= 1
+    start_month = date(y, m, 1).strftime("%Y-%m")
+
+    rows = session.execute(
+        text("""
+            SELECT
+                strftime('%Y-%m', COALESCE(so.paid_at, so.created_at))  AS month_key,
+                so.product_attr                                          AS sku_id,
+                COALESCE(psc.purchase_cost, 0.0)                         AS unit_cost,
+                CASE WHEN psc.purchase_cost IS NULL AND COALESCE(so.product_attr,'') != ''
+                     THEN 1 ELSE 0 END                                   AS missing_cost,
+                SUM(CASE WHEN so.status = '交易成功'
+                         THEN so.quantity   ELSE 0   END)                AS units_sold,
+                SUM(CASE WHEN so.status = '交易成功'
+                         THEN so.buyer_paid ELSE 0.0 END)                AS gross_revenue,
+                SUM(CASE WHEN so.status = '交易成功'
+                         THEN CAST(so.refund_amount AS REAL) ELSE 0.0 END) AS refund
+            FROM suborder so
+            LEFT JOIN productskucost psc
+                ON  psc.taobao_item_id = so.taobao_item_id
+                AND psc.sku_id         = COALESCE(so.product_attr, '')
+            WHERE so.taobao_item_id = :item_id
+              AND strftime('%Y-%m', COALESCE(so.paid_at, so.created_at)) >= :start_month
+            GROUP BY month_key, so.product_attr, psc.purchase_cost
+            ORDER BY month_key
+        """),
+        {"item_id": product.taobao_item_id, "start_month": start_month},
+    ).fetchall()
+
+    # Aggregate per month
+    from collections import defaultdict
+    month_data: dict[str, dict] = defaultdict(lambda: {
+        "units_sold": 0, "revenue": 0.0, "cost": 0.0, "has_missing": False
+    })
+    for r in rows:
+        mk = r[0]
+        if not mk:
+            continue
+        month_data[mk]["units_sold"] += int(r[4] or 0)
+        month_data[mk]["revenue"] += float(r[5] or 0) - float(r[6] or 0)
+        month_data[mk]["cost"] += int(r[4] or 0) * float(r[2] or 0)
+        if int(r[3] or 0):
+            month_data[mk]["has_missing"] = True
+
+    has_missing_overall = any(v["has_missing"] for v in month_data.values())
+    months_present = sorted(month_data.keys())
+
+    items = []
+    for mk in months_present:
+        d = month_data[mk]
+        rev = d["revenue"]
+        cost = d["cost"]
+        gp = rev - cost
+        margin = round(gp / rev * 100, 2) if rev > 0 else None
+        items.append(ProductProfitMonthly(
+            month=mk,
+            units_sold=d["units_sold"],
+            revenue=round(rev, 2),
+            cost=round(cost, 2),
+            gross_profit=round(gp, 2),
+            gross_margin_pct=margin,
+        ))
+
+    return ProductProfitMonthlyResponse(
+        months_present=months_present,
+        items=items,
+        has_missing_sku_cost=has_missing_overall,
     )
 

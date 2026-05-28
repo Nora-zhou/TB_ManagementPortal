@@ -24,9 +24,10 @@
           <th>商品 ID</th>
           <th @click="cycleSortOrder" style="cursor:pointer">商品标题 {{ sortArrow }}</th>
           <th>当前价格</th>
-          <th>近90天销量</th>
+          <th @click="toggleSold90dSort" style="cursor:pointer">近90天销量 {{ sold90dSortArrow }}</th>
           <th>最近更新</th>
           <th>预警</th>
+          <th @click="toggleMarginSort" style="cursor:pointer">毛利率 {{ marginSortArrow }}</th>
         </tr>
       </thead>
       <tbody>
@@ -40,6 +41,10 @@
             <span v-if="item.alert_status === 'below_low'" class="badge below">价格下跌预警</span>
             <span v-else-if="item.alert_status === 'above_high'" class="badge above">价格上涨预警</span>
             <span v-else class="badge normal">—</span>
+          </td>
+          <td>
+            <span v-if="item.gross_margin_pct != null" :class="marginClass(item.gross_margin_pct)">{{ item.gross_margin_pct.toFixed(1) }}%</span>
+            <span v-else class="muted">—</span>
           </td>
         </tr>
       </tbody>
@@ -107,6 +112,43 @@ function cycleSortOrder() {
   else sortOrder.value = 'none'
 }
 
+const marginSortBy = ref(null)   // null | 'asc' | 'desc'
+const marginSortArrow = computed(() => {
+  if (marginSortBy.value === 'asc') return '↑'
+  if (marginSortBy.value === 'desc') return '↓'
+  return '⇅'
+})
+function toggleMarginSort() {
+  sold90dSortBy.value = null
+  if (marginSortBy.value === null) marginSortBy.value = 'desc'
+  else if (marginSortBy.value === 'desc') marginSortBy.value = 'asc'
+  else marginSortBy.value = null
+  page.value = 1
+  load()
+}
+
+const sold90dSortBy = ref(null)   // null | 'asc' | 'desc'
+const sold90dSortArrow = computed(() => {
+  if (sold90dSortBy.value === 'asc') return '↑'
+  if (sold90dSortBy.value === 'desc') return '↓'
+  return '⇅'
+})
+function toggleSold90dSort() {
+  marginSortBy.value = null
+  if (sold90dSortBy.value === null) sold90dSortBy.value = 'desc'
+  else if (sold90dSortBy.value === 'desc') sold90dSortBy.value = 'asc'
+  else sold90dSortBy.value = null
+  page.value = 1
+  load()
+}
+
+function marginClass(pct) {
+  if (pct == null) return ''
+  if (pct < 0) return 'margin-red'
+  if (pct < 10) return 'margin-orange'
+  return ''
+}
+
 
 async function load() {
   loading.value = true
@@ -117,6 +159,13 @@ async function load() {
     if (activeMin.value != null) params.min_price = activeMin.value
     if (activeMax.value != null) params.max_price = activeMax.value
     if (storeFilter.value != null) params.store = storeFilter.value
+    if (marginSortBy.value != null) {
+      params.sort_by = 'gross_margin_pct'
+      params.sort_order = marginSortBy.value
+    } else if (sold90dSortBy.value != null) {
+      params.sort_by = 'sold_90d'
+      params.sort_order = sold90dSortBy.value
+    }
     const data = await fetchProducts(params)
     items.value = data.items
     total.value = data.total
@@ -260,4 +309,7 @@ tr.clickable:hover { background: var(--bg-subtle); }
   display: flex; justify-content: space-between; align-items: center;
   font-size: 13px; margin-bottom: 12px;
 }
+.margin-red { color: #ef4444; font-weight: 600; }
+.margin-orange { color: #f97316; font-weight: 600; }
+.muted { color: var(--text-muted); }
 </style>

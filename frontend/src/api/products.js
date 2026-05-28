@@ -8,6 +8,8 @@ export async function fetchProducts(params = {}) {
   if (params.min_price != null) query.set('min_price', params.min_price)
   if (params.max_price != null) query.set('max_price', params.max_price)
   if (params.store != null) query.set('store', params.store)
+  if (params.sort_by) query.set('sort_by', params.sort_by)
+  if (params.sort_order) query.set('sort_order', params.sort_order)
   const resp = await fetch(`${BASE}?${query}`)
   if (!resp.ok) throw new Error((await resp.json()).detail || resp.statusText)
   return resp.json()
@@ -71,6 +73,50 @@ export async function fetchOrderPriceSeries(productId, days) {
   const query = new URLSearchParams()
   if (days && days !== 'all') query.set('days', days)
   const resp = await fetch(`${BASE}/${productId}/order-price-series?${query}`)
+  if (!resp.ok) throw new Error((await resp.json()).detail || resp.statusText)
+  return resp.json()
+}
+
+// ---------------------------------------------------------------------------
+// 010-product-profit-analysis API functions
+// ---------------------------------------------------------------------------
+
+export async function fetchSKUList(id) {
+  const resp = await fetch(`${BASE}/${id}/sku-list`)
+  if (!resp.ok) throw new Error((await resp.json()).detail || resp.statusText)
+  return resp.json()
+}
+
+export async function fetchSKUCosts(id) {
+  const resp = await fetch(`${BASE}/${id}/sku-costs`)
+  if (!resp.ok) throw new Error((await resp.json()).detail || resp.statusText)
+  return resp.json()
+}
+
+export async function saveSKUCosts(id, items) {
+  const resp = await fetch(`${BASE}/${id}/sku-costs`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ items }),
+  })
+  if (!resp.ok) throw new Error((await resp.json()).detail || resp.statusText)
+  return resp.json()
+}
+
+export async function fetchSKUCostSuggest(id) {
+  const resp = await fetch(`${BASE}/${id}/sku-cost-suggest`)
+  if (!resp.ok) throw new Error((await resp.json()).detail || resp.statusText)
+  return resp.json()
+}
+
+export async function fetchProfitSummary(id) {
+  const resp = await fetch(`${BASE}/${id}/profit-summary`)
+  if (!resp.ok) throw new Error((await resp.json()).detail || resp.statusText)
+  return resp.json()
+}
+
+export async function fetchProfitMonthly(id) {
+  const resp = await fetch(`${BASE}/${id}/profit-monthly`)
   if (!resp.ok) throw new Error((await resp.json()).detail || resp.statusText)
   return resp.json()
 }

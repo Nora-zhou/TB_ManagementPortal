@@ -25,6 +25,8 @@
 
       <OrderPriceChart :product-id="product.id" :days="90" />
 
+      <ProductProfitAnalysis :product-id="product.id" />
+
       <h3>价格预警阈值</h3>
       <div class="alert-form">
         <label>
@@ -51,6 +53,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { fetchProduct, updateAlert } from '../api/products.js'
 import OrderPriceChart from './OrderPriceChart.vue'
+import ProductProfitAnalysis from './ProductProfitAnalysis.vue'
 
 const route = useRoute()
 const router = useRouter()

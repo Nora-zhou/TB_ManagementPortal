@@ -125,6 +125,8 @@ async def import_purchase_orders(
     idx_discount      = col_map.get("涨价或折扣(元)")
     idx_paid_at       = col_map.get("订单付款时间")
     idx_goods_title   = col_map.get("货品标题")
+    idx_unit_price    = col_map.get("单价(元)")
+    idx_quantity      = col_map.get("数量")
 
     imported = 0
     updated = 0
@@ -157,6 +159,9 @@ async def import_purchase_orders(
         goods_total  = _to_float(_cell(row, idx_goods_total))
         shipping_fee = _to_float(_cell(row, idx_shipping_fee))
         discount     = _to_float(_cell(row, idx_discount))
+        unit_price   = _to_float(_cell(row, idx_unit_price))
+        qty_raw      = _to_float(_cell(row, idx_quantity))
+        quantity     = int(qty_raw) if qty_raw is not None else None
 
         status_raw = _cell(row, idx_status)
         status_val = str(status_raw).strip() if status_raw else ""
@@ -177,6 +182,8 @@ async def import_purchase_orders(
             existing.seller_member = seller_member
             existing.goods_title   = goods_title
             existing.goods_total   = goods_total
+            existing.unit_price    = unit_price
+            existing.quantity      = quantity
             existing.shipping_fee  = shipping_fee
             existing.discount      = discount
             existing.paid_amount   = paid_amount
@@ -194,6 +201,8 @@ async def import_purchase_orders(
                 seller_member = seller_member,
                 goods_title   = goods_title,
                 goods_total   = goods_total,
+                unit_price    = unit_price,
+                quantity      = quantity,
                 shipping_fee  = shipping_fee,
                 discount      = discount,
                 paid_amount   = paid_amount,

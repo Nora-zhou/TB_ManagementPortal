@@ -47,6 +47,8 @@ class ProductRead(BaseModel):
     alert_status: str  # "normal" | "below_low" | "above_high"
     snapshot_count: Optional[int] = None
     sold_90d: int = 0
+    gross_margin_pct: Optional[float] = None
+    sku_cost_configured: Optional[bool] = None
 
     model_config = {"from_attributes": True}
 
@@ -135,6 +137,66 @@ class GoodsDirImportResponse(BaseModel):
     imported: int
     updated: int
     errors: list[dict]  # [{"file": str, "reason": str}]
+
+
+# ---------------------------------------------------------------------------
+# Snapshot schemas
+# ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
+# 010-product-profit-analysis schemas
+# ---------------------------------------------------------------------------
+
+class ProductSKUCostRead(BaseModel):
+    id: int
+    taobao_item_id: str
+    sku_id: str
+    sku_name: str
+    purchase_cost: float
+    model_config = {"from_attributes": True}
+
+
+class ProductSKUCostUpsertItem(BaseModel):
+    sku_id: str = Field(max_length=500)
+    sku_name: str = Field(max_length=500)
+    purchase_cost: float = Field(ge=0.0)
+
+
+class ProductSKUCostBatchRequest(BaseModel):
+    items: list[ProductSKUCostUpsertItem]
+
+
+class ProductSKUCostSuggestResponse(BaseModel):
+    available: bool
+    suggested_cost: Optional[float]
+    matched_orders: int
+    note: str
+
+
+class ProductProfitSummary(BaseModel):
+    taobao_item_id: str
+    units_sold: int
+    revenue: float
+    weighted_avg_cost: float
+    cost: float
+    gross_profit: float
+    gross_margin_pct: Optional[float]
+    has_missing_sku_cost: bool
+
+
+class ProductProfitMonthly(BaseModel):
+    month: str
+    units_sold: int
+    revenue: float
+    cost: float
+    gross_profit: float
+    gross_margin_pct: Optional[float]
+
+
+class ProductProfitMonthlyResponse(BaseModel):
+    months_present: list[str]
+    items: list[ProductProfitMonthly]
+    has_missing_sku_cost: bool
 
 
 # ---------------------------------------------------------------------------

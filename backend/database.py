@@ -1,6 +1,7 @@
 from sqlmodel import SQLModel, create_engine, Session
 from sqlalchemy import text
 from typing import Generator
+from models import ProductSKUCost  # noqa: F401 — ensures table is registered on startup
 
 DATABASE_URL = "sqlite:///./tasks.db"
 

@@ -1,6 +1,7 @@
 from datetime import datetime, timezone
 from typing import Optional
 from sqlmodel import SQLModel, Field, Session, select, func
+from sqlalchemy import UniqueConstraint
 
 
 class Task(SQLModel, table=True):
@@ -75,6 +76,8 @@ class PurchaseOrder(SQLModel, table=True):
     seller_member: Optional[str]      = Field(default=None, max_length=200)
     goods_title:   Optional[str]      = Field(default=None, max_length=500)
     goods_total:   Optional[float]    = None
+    unit_price:    Optional[float]    = None   # 单价(元) — per-unit purchase price
+    quantity:      Optional[int]      = None   # 数量 — units purchased
     shipping_fee:  Optional[float]    = None
     discount:      Optional[float]    = None
     paid_amount:   float
@@ -85,6 +88,20 @@ class PurchaseOrder(SQLModel, table=True):
         default_factory=lambda: datetime.now(timezone.utc)
     )
     store:         int                = Field(default=1)  # 1=店铺1, 2=店铺2
+
+
+# ---------------------------------------------------------------------------
+# 010-product-profit-analysis: SKU cost table
+# ---------------------------------------------------------------------------
+
+class ProductSKUCost(SQLModel, table=True):
+    id:             Optional[int] = Field(default=None, primary_key=True)
+    taobao_item_id: str           = Field(index=True, max_length=64)
+    sku_id:         str           = Field(max_length=500)   # == SubOrder.product_attr; "" for single-SKU
+    sku_name:       str           = Field(max_length=500)   # human-readable label (user-editable)
+    purchase_cost:  float         = Field(ge=0.0)           # RMB / unit; non-negative
+
+    __table_args__ = (UniqueConstraint("taobao_item_id", "sku_id"),)
 
 
 def trim_snapshots(session: Session, product_id: int, limit: int = 365) -> None:
