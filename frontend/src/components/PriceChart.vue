@@ -31,10 +31,10 @@ const chartOption = computed(() => {
 
   const markLines = []
   if (props.alertLow != null) {
-    markLines.push({ yAxis: props.alertLow, name: `下限 ¥${props.alertLow}`, lineStyle: { color: '#cf1322' } })
+    markLines.push({ yAxis: props.alertLow, name: `下限 ¥${props.alertLow}`, lineStyle: { color: '#dc2626' } })
   }
   if (props.alertHigh != null) {
-    markLines.push({ yAxis: props.alertHigh, name: `上限 ¥${props.alertHigh}`, lineStyle: { color: '#d46b08' } })
+    markLines.push({ yAxis: props.alertHigh, name: `上限 ¥${props.alertHigh}`, lineStyle: { color: '#d97706' } })
   }
 
   return {
@@ -62,5 +62,5 @@ const chartOption = computed(() => {
 
 <style scoped>
 .chart { width: 100%; height: 360px; }
-.no-data { padding: 2rem; text-align: center; color: #999; background: #fafafa; border-radius: 6px; }
+.no-data { padding: 2rem; text-align: center; color: var(--text-muted); background: var(--bg-subtle); border-radius: 16px; font-size: 14px; }
 </style>

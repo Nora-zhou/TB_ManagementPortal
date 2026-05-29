@@ -193,7 +193,7 @@ function buildTrendOption(data) {
         type: 'line',
         smooth: true,
         data: data.revenue,
-        itemStyle: { color: '#4e9af1' },
+        itemStyle: { color: '#0ea5e9' },
         areaStyle: { opacity: 0.1 },
       },
       {
@@ -201,7 +201,7 @@ function buildTrendOption(data) {
         type: 'line',
         smooth: true,
         data: data.refund,
-        itemStyle: { color: '#ef5350' },
+        itemStyle: { color: '#dc2626' },
         areaStyle: { opacity: 0.1 },
       },
     ],
@@ -351,7 +351,7 @@ h3 { margin: 0; font-size: 14px; font-weight: 500; letter-spacing: 0.14px; color
   gap: 10px;
   background: var(--surface);
   border: 1px solid var(--border-subtle);
-  border-radius: 12px;
+  border-radius: 16px;
   padding: 10px 16px;
   box-shadow: var(--shadow-soft);
 }
@@ -441,9 +441,9 @@ h3 { margin: 0; font-size: 14px; font-weight: 500; letter-spacing: 0.14px; color
 }
 .card-value { font-size: 26px; font-weight: 300; margin-bottom: 6px; letter-spacing: -0.3px; }
 .card-sub { font-size: 12px; color: var(--text-muted); letter-spacing: 0.12px; }
-.blue  { color: #1976d2; }
-.red   { color: #e53935; }
-.green { color: #059669; }
+.blue  { color: var(--info); }
+.red   { color: var(--danger); }
+.green { color: var(--success); }
 .gray  { color: var(--text-secondary); }
 .date-range { font-size: 16px; }
 
@@ -503,7 +503,7 @@ h3 { margin: 0; font-size: 14px; font-weight: 500; letter-spacing: 0.14px; color
   color: var(--text-muted); text-transform: uppercase;
 }
 .top-table tbody tr:last-child td { border-bottom: none; }
-.rank { width: 2rem; text-align: center; color: var(--text-muted); font-weight: 600; font-size: 12px; }
+.rank { width: 2rem; text-align: center; color: var(--text-muted); font-weight: 500; font-size: 12px; }
 .item-id { color: var(--text-muted); font-size: 12px; font-family: monospace; white-space: nowrap; }
 .num { text-align: right; font-variant-numeric: tabular-nums; color: var(--text); }
 </style>

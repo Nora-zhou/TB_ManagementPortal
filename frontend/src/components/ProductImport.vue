@@ -173,7 +173,7 @@ async function submitTaobao() {
   padding: 14px 18px;
   background: var(--bg-subtle);
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: 16px;
 }
 .file-label {
   display: flex; align-items: center; gap: 10px;

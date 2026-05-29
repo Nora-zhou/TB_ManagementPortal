@@ -195,7 +195,7 @@ function buildCharts() {
         type: 'bar',
         data: sortedSuppliers.map(s => s.total_amount),
         label: { show: false },
-        itemStyle: { color: '#409eff' },
+        itemStyle: { color: '#0ea5e9' },
       },
     ],
   }
@@ -317,35 +317,44 @@ onMounted(async () => {
 }
 
 .dashboard-title {
-  font-size: 18px;
-  font-weight: 600;
+  font-size: 28px;
+  font-weight: 300;
   margin: 0;
-  color: var(--text, #1a1a1a);
+  letter-spacing: -0.5px;
+  color: var(--text);
 }
 
 .btn-back {
-  padding: 7px 16px;
-  background: #fff;
-  color: #409eff;
-  border: 1px solid #409eff;
-  border-radius: 6px;
+  padding: 6px 14px;
+  background: var(--surface);
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+  border-radius: 9999px;
   cursor: pointer;
-  font-size: 14px;
+  font-size: 13px;
+  font-weight: 500;
   white-space: nowrap;
-  transition: background 0.15s;
+  box-shadow: var(--shadow-soft);
+  transition: background 0.15s, color 0.15s;
 }
 
 .btn-back:hover {
-  background: #ecf5ff;
+  background: var(--bg-subtle);
+  color: var(--text);
 }
 
 .filter-row {
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: 16px;
   margin-bottom: 20px;
-  font-size: 14px;
+  font-size: 13px;
   flex-wrap: wrap;
+  background: var(--surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 16px;
+  padding: 10px 16px;
+  box-shadow: var(--shadow-soft);
 }
 
 .store-filter {
@@ -353,35 +362,44 @@ onMounted(async () => {
   gap: 4px;
 }
 .store-filter button {
-  padding: 4px 12px;
-  border: 1px solid var(--border, #ddd);
-  background: transparent;
-  border-radius: 4px;
+  padding: 5px 12px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: 9999px;
   cursor: pointer;
-  font-size: 13px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  box-shadow: var(--shadow-soft);
+  transition: all 0.15s;
 }
+.store-filter button:hover:not(.active) { background: var(--bg-subtle); color: var(--text); }
 .store-filter button.active {
   background: #000;
   color: #fff;
   border-color: #000;
+  box-shadow: var(--shadow-card);
 }
 
 .month-select {
   margin-left: 6px;
   padding: 5px 10px;
-  border-radius: 6px;
-  border: 1px solid #e5e7eb;
-  font-size: 14px;
-  background: #fff;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  font-size: 13px;
+  background: var(--surface);
+  color: var(--text);
   cursor: pointer;
+  box-shadow: var(--shadow-inset);
+  outline: none;
 }
 
 .chart-block {
   margin-bottom: 32px;
-  background: #fff;
-  border: 1px solid #f0f0f0;
-  border-radius: 8px;
-  padding: 16px;
+  background: var(--surface);
+  border-radius: 16px;
+  padding: 20px 24px;
+  box-shadow: var(--shadow-outline), var(--shadow-soft);
 }
 
 .chart3-filter {
@@ -391,12 +409,12 @@ onMounted(async () => {
   gap: 8px;
   margin-bottom: 12px;
   padding-bottom: 12px;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .filter-label {
   font-size: 13px;
-  color: #555;
+  color: var(--text-muted);
   line-height: 28px;
   white-space: nowrap;
 }
@@ -404,16 +422,18 @@ onMounted(async () => {
 .btn-filter-action {
   padding: 4px 10px;
   font-size: 12px;
-  border: 1px solid #d1d5db;
-  border-radius: 4px;
-  background: #f9fafb;
+  border: 1px solid var(--border);
+  border-radius: 9999px;
+  background: var(--surface);
   cursor: pointer;
-  color: #374151;
+  color: var(--text-secondary);
+  box-shadow: var(--shadow-soft);
   transition: background 0.15s;
 }
 
 .btn-filter-action:hover {
-  background: #e5e7eb;
+  background: var(--bg-subtle);
+  color: var(--text);
 }
 
 .supplier-checkboxes {
@@ -427,7 +447,7 @@ onMounted(async () => {
   align-items: center;
   gap: 4px;
   font-size: 12px;
-  color: #374151;
+  color: var(--text-secondary);
   cursor: pointer;
   white-space: nowrap;
 }
@@ -440,16 +460,17 @@ onMounted(async () => {
   text-align: center;
   padding: 40px;
   font-size: 14px;
-  color: #888;
+  color: var(--text-muted);
 }
 
 .error-msg {
   text-align: center;
-  padding: 40px;
-  font-size: 14px;
-  color: #991b1b;
-  background: #fee2e2;
-  border-radius: 8px;
+  padding: 16px;
+  font-size: 13px;
+  color: #b91c1c;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 10px;
 }
 
 

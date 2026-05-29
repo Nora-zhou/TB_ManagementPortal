@@ -277,7 +277,7 @@ const grandTotal = computed(() => {
   display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
   background: var(--surface);
   border: 1px solid var(--border-subtle);
-  border-radius: 12px;
+  border-radius: 16px;
   padding: 10px 16px;
   box-shadow: var(--shadow-soft);
 }
@@ -317,7 +317,7 @@ const grandTotal = computed(() => {
 .summary-bar {
   display: flex; align-items: center; gap: 0;
   padding: 10px 18px; margin-bottom: 12px;
-  background: var(--surface); border-radius: 12px;
+  background: var(--surface); border-radius: 16px;
   box-shadow: var(--shadow-outline), var(--shadow-soft);
   font-size: 13px;
 }
@@ -325,7 +325,7 @@ const grandTotal = computed(() => {
   display: flex; flex-direction: column; align-items: center;
   padding: 2px 20px;
 }
-.summary-item strong { font-size: 15px; font-weight: 600; color: var(--text); }
+.summary-item strong { font-size: 15px; font-weight: 500; color: var(--text); }
 .summary-label { font-size: 11px; color: var(--text-muted); margin-bottom: 1px; }
 .refund-item strong { color: var(--danger); }
 .summary-sep {
@@ -366,8 +366,8 @@ const grandTotal = computed(() => {
 }
 .toggle-icon.open { transform: rotate(90deg); }
 
-.date-label { font-weight: 600; font-size: 13px; color: var(--text); }
-.date-stat { font-weight: 600; color: var(--text); }
+.date-label { font-weight: 500; font-size: 13px; color: var(--text); }
+.date-stat { font-weight: 500; color: var(--text); }
 .date-count { color: var(--text-muted); font-size: 12px; padding-left: 8px; }
 .date-muted { color: var(--text-muted); }
 

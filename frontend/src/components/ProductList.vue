@@ -263,12 +263,12 @@ onMounted(load)
 .toolbar-row--top { gap: 12px; }
 .toolbar h2 {
   margin: 0; flex: 1;
-  font-size: 22px; font-weight: 400; letter-spacing: -0.2px; color: var(--text);
+  font-size: 22px; font-weight: 500; letter-spacing: -0.2px; color: var(--text);
 }
 .toolbar-row--filters {
   background: var(--surface);
   border: 1px solid var(--border-subtle);
-  border-radius: 12px;
+  border-radius: 16px;
   padding: 10px 16px;
   gap: 10px;
   box-shadow: var(--shadow-soft);
@@ -359,9 +359,9 @@ tr.clickable:hover { background: var(--bg-subtle); }
   display: flex; justify-content: space-between; align-items: center;
   font-size: 13px; margin-bottom: 12px;
 }
-.margin-red    { color: #ef4444; font-weight: 600; }
-.margin-orange { color: #f97316; font-weight: 600; }
-.margin-yellow { color: #b45309; font-weight: 600; }
+.margin-red    { color: var(--danger); font-weight: 500; }
+.margin-orange { color: var(--warning); font-weight: 500; }
+.margin-yellow { color: #b45309; font-weight: 500; }
 .muted { color: var(--text-muted); }
 
 .margin-filter { display: flex; gap: 4px; }

@@ -127,7 +127,7 @@ onMounted(load)
 .back-btn:hover { color: var(--text); }
 h2 {
   margin-bottom: 8px;
-  font-size: 22px; font-weight: 400; letter-spacing: -0.2px; color: var(--text);
+  font-size: 24px; font-weight: 300; letter-spacing: -0.3px; color: var(--text);
 }
 h3 {
   margin: 24px 0 12px;
@@ -135,7 +135,7 @@ h3 {
 }
 .info-table {
   border-collapse: collapse; width: 100%; margin-bottom: 20px;
-  background: var(--surface); border-radius: 12px;
+  background: var(--surface); border-radius: 16px;
   box-shadow: var(--shadow-outline), var(--shadow-soft);
   overflow: hidden;
 }

@@ -267,23 +267,25 @@ onBeforeUnmount(() => {
 }
 .type-toggle {
   display: flex;
-  border: 1px solid #ddd;
-  border-radius: 4px;
+  border: 1px solid var(--border);
+  border-radius: 9999px;
   overflow: hidden;
 }
 .type-toggle button {
   padding: 4px 12px;
   border: none;
-  background: #fff;
+  background: var(--surface);
   cursor: pointer;
-  font-size: 0.85rem;
-  border-right: 1px solid #ddd;
+  font-size: 13px;
+  font-weight: 500;
+  border-right: 1px solid var(--border);
+  transition: background 0.12s, color 0.12s;
 }
 .type-toggle button:last-child {
   border-right: none;
 }
 .type-toggle button.active {
-  background: #409eff;
+  background: #000;
   color: #fff;
 }
 .range-buttons {
@@ -292,16 +294,24 @@ onBeforeUnmount(() => {
 }
 .range-buttons button {
   padding: 4px 12px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 9999px;
+  background: var(--surface);
   cursor: pointer;
-  font-size: 0.85rem;
+  font-size: 13px;
+  font-weight: 500;
+  box-shadow: var(--shadow-soft);
+  transition: background 0.12s, color 0.12s;
+}
+.range-buttons button:hover:not(.active) {
+  background: var(--bg-subtle);
+  color: var(--text);
 }
 .range-buttons button.active {
-  background: #409eff;
+  background: #000;
   color: #fff;
-  border-color: #409eff;
+  border-color: #000;
+  box-shadow: var(--shadow-card);
 }
 .chart-area {
   width: 100%;
@@ -312,25 +322,25 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #888;
-  background: #fafafa;
-  border: 1px dashed #e0e0e0;
-  border-radius: 6px;
+  color: var(--text-muted);
+  background: var(--bg-subtle);
+  border: 1px dashed var(--border);
+  border-radius: 16px;
 }
 .state-box.error {
-  color: #dc2626;
+  color: var(--danger);
   background: #fef2f2;
   border-color: #fca5a5;
 }
 .state-box.empty {
-  color: #6b7280;
+  color: var(--text-muted);
 }
 .truncate-notice {
   padding: 6px 12px;
   background: #fffbeb;
   border: 1px solid #fcd34d;
-  border-radius: 4px;
-  font-size: 0.85rem;
+  border-radius: 8px;
+  font-size: 13px;
   color: #92400e;
   margin-bottom: 8px;
 }

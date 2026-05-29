@@ -96,11 +96,11 @@ const trendOption = computed(() => {
       },
     ],
     series: [
-      { name: '总收入', type: 'line', smooth: true, yAxisIndex: 0, color: '#409eff',              data: s.total_revenue },
-      { name: '总成本', type: 'line', smooth: true, yAxisIndex: 0, color: '#e6a23c',              data: s.total_cost },
-      { name: '净利润', type: 'line', smooth: true, yAxisIndex: 0, color: '#67c23a',              data: s.total_profit },
-      { name: '1店利润', type: 'bar', yAxisIndex: 1, itemStyle: { color: 'rgba(64,158,255,0.5)' }, data: s.profit_s1 },
-      { name: '2店利润', type: 'bar', yAxisIndex: 1, itemStyle: { color: 'rgba(103,194,58,0.5)' }, data: s.profit_s2 },
+      { name: '总收入', type: 'line', smooth: true, yAxisIndex: 0, color: '#0ea5e9',              data: s.total_revenue },
+      { name: '总成本', type: 'line', smooth: true, yAxisIndex: 0, color: '#d97706',              data: s.total_cost },
+      { name: '净利润', type: 'line', smooth: true, yAxisIndex: 0, color: '#059669',              data: s.total_profit },
+      { name: '1店利润', type: 'bar', yAxisIndex: 1, itemStyle: { color: 'rgba(14,165,233,0.5)' }, data: s.profit_s1 },
+      { name: '2店利润', type: 'bar', yAxisIndex: 1, itemStyle: { color: 'rgba(5,150,105,0.5)' }, data: s.profit_s2 },
     ],
   }
 })
@@ -112,13 +112,13 @@ const pieOption = computed(() => {
   const profitVal = Math.max(0, total_profit)
   const pieData = []
   if (profitVal > 0) {
-    pieData.push({ name: '净利润', value: profitVal, itemStyle: { color: '#67c23a' } })
+    pieData.push({ name: '净利润', value: profitVal, itemStyle: { color: '#059669' } })
   }
   if (total_cost > 0) {
-    pieData.push({ name: '总成本', value: total_cost, itemStyle: { color: '#e6a23c' } })
+    pieData.push({ name: '总成本', value: total_cost, itemStyle: { color: '#d97706' } })
   }
   if (total_refund > 0) {
-    pieData.push({ name: '退款', value: total_refund, itemStyle: { color: '#f56c6c' } })
+    pieData.push({ name: '退款', value: total_refund, itemStyle: { color: '#dc2626' } })
   }
   return {
     tooltip: { trigger: 'item', formatter: '{a} <br/>{b}：¥{c} ({d}%)' },
@@ -245,10 +245,7 @@ const pieOption = computed(() => {
 }
 
 .page-title {
-  font-size: 20px;
-  font-weight: 600;
   margin-bottom: 16px;
-  color: var(--text, #1a1a1a);
 }
 
 .filter-row {
@@ -264,20 +261,23 @@ const pieOption = computed(() => {
   align-items: center;
   gap: 8px;
   font-size: 14px;
-  color: var(--text-muted, #666);
+  color: var(--text-muted);
 }
 
 .month-input {
-  border: 1px solid var(--border-subtle, #ddd);
-  border-radius: 6px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
   padding: 5px 10px;
   font-size: 14px;
   outline: none;
-  transition: border-color 0.2s;
+  background: var(--surface);
+  box-shadow: var(--shadow-inset);
+  transition: border-color 0.15s, box-shadow 0.15s;
   cursor: pointer;
 }
 .month-input:focus {
-  border-color: #409eff;
+  border-color: rgba(0,0,0,0.3);
+  box-shadow: var(--shadow-inset), 0 0 0 3px rgba(147,197,253,0.5);
 }
 
 .kpi-section {
@@ -286,14 +286,14 @@ const pieOption = computed(() => {
 
 .kpi-store-label {
   font-size: 13px;
-  font-weight: 600;
-  color: var(--text-muted, #666);
+  font-weight: 500;
+  color: var(--text-muted);
   letter-spacing: 0.5px;
   margin: 12px 0 6px;
 }
 
 .kpi-total-label {
-  color: #303133;
+  color: var(--text);
 }
 
 .kpi-grid {
@@ -304,52 +304,55 @@ const pieOption = computed(() => {
 }
 
 .kpi-card {
-  background: var(--bg-card, #fff);
-  border: 1px solid var(--border-subtle, #e4e7ed);
-  border-radius: 8px;
+  background: var(--surface);
+  border-radius: 16px;
   padding: 16px 20px;
+  box-shadow: var(--shadow-outline), var(--shadow-soft);
 }
 
 .kpi-card--total {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  box-shadow: var(--shadow-card);
 }
 
 .kpi-label {
   font-size: 12px;
-  color: var(--text-muted, #909399);
+  color: var(--text-muted);
   margin-bottom: 6px;
+  letter-spacing: 0.12px;
 }
 
 .kpi-value {
   font-size: 20px;
-  font-weight: 600;
-  color: var(--text, #303133);
+  font-weight: 300;
+  color: var(--text);
+  letter-spacing: -0.3px;
 }
 
 .kpi-profit .kpi-value {
-  color: #67c23a;
+  color: var(--success);
 }
 
 .kpi-loss .kpi-value {
-  color: #f56c6c;
+  color: var(--danger);
 }
 
 .kpi-refund .kpi-value {
-  color: #e6a23c;
+  color: var(--warning);
 }
 
 .chart-block {
-  background: var(--bg-subtle, #f5f7fa);
-  border: 1px solid var(--border-subtle, #e4e7ed);
-  border-radius: 8px;
-  padding: 16px;
+  background: var(--surface);
+  border-radius: 16px;
+  padding: 20px 24px;
   margin-bottom: 20px;
+  box-shadow: var(--shadow-outline), var(--shadow-soft);
 }
 
 .chart-title {
   font-size: 14px;
-  font-weight: 600;
-  color: var(--text, #303133);
+  font-weight: 500;
+  color: var(--text);
+  letter-spacing: 0.14px;
   margin-bottom: 12px;
 }
 
@@ -358,21 +361,22 @@ const pieOption = computed(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--text-muted, #909399);
+  color: var(--text-muted);
   font-size: 14px;
 }
 
 .status-msg {
   text-align: center;
   padding: 40px;
-  color: var(--text-muted, #909399);
+  color: var(--text-muted);
 }
 
 .error-msg {
-  padding: 16px;
-  color: #f56c6c;
-  border: 1px solid #fde8e8;
-  border-radius: 8px;
-  background: #fef0f0;
+  padding: 10px 16px;
+  color: #b91c1c;
+  border: 1px solid #fecaca;
+  border-radius: 10px;
+  background: #fef2f2;
+  font-size: 13px;
 }
 </style>

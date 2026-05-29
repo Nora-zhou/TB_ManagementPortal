@@ -66,11 +66,11 @@ function monthKey(m) {
 }
 
 function badgeStyle(score) {
-  if (score === null || score === undefined) return { color: '#888' }
-  if (score >= 85) return { color: 'green' }
-  if (score >= 65) return { color: '#409eff' }
-  if (score >= 45) return { color: '#e6a23c' }
-  return { color: '#f56c6c' }
+  if (score === null || score === undefined) return { color: 'var(--text-muted)' }
+  if (score >= 85) return { color: 'var(--success)' }
+  if (score >= 65) return { color: 'var(--info)' }
+  if (score >= 45) return { color: 'var(--warning)' }
+  return { color: 'var(--danger)' }
 }
 
 function trendIndicator(score) {
@@ -199,7 +199,7 @@ function returnRateOption(detail) {
         position: 'right',
         formatter: params => `${params.value}件  (${rates[params.dataIndex]}%)`,
       },
-      itemStyle: { color: '#f56c6c' },
+      itemStyle: { color: '#dc2626' },
     }],
   }
 }
@@ -384,17 +384,30 @@ onMounted(async () => {
   margin-bottom: 16px;
 }
 
+.eval-header h2 {
+  font-size: 28px;
+  font-weight: 300;
+  letter-spacing: -0.5px;
+  color: var(--text);
+  margin: 0;
+}
+
 .btn-back-eval {
   padding: 6px 14px;
-  background: #f0f0f0;
-  border: 1px solid #ccc;
-  border-radius: 4px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 9999px;
   cursor: pointer;
-  font-size: 14px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  box-shadow: var(--shadow-soft);
+  transition: background 0.15s;
 }
 
 .btn-back-eval:hover {
-  background: #ddd;
+  background: var(--bg-subtle);
+  color: var(--text);
 }
 
 .filter-row {
@@ -402,29 +415,51 @@ onMounted(async () => {
   gap: 20px;
   margin-bottom: 20px;
   font-size: 14px;
+  align-items: center;
+  background: var(--surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 16px;
+  padding: 10px 16px;
+  box-shadow: var(--shadow-soft);
 }
 
 .filter-row select {
   margin-left: 6px;
-  padding: 4px 8px;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 13px;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow-inset);
+  outline: none;
 }
 
 .eval-table {
   width: 100%;
   border-collapse: collapse;
   font-size: 13px;
+  background: var(--surface);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: var(--shadow-outline), var(--shadow-soft);
 }
 
 .eval-table th,
 .eval-table td {
-  border: 1px solid #eee;
-  padding: 8px 10px;
+  border-bottom: 1px solid var(--border-subtle);
+  padding: 10px 12px;
   text-align: center;
 }
 
 .eval-table th {
-  background: #f5f7fa;
-  font-weight: 600;
+  background: var(--surface);
+  font-weight: 500;
+  color: var(--text-muted);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.12px;
+  border-bottom: 1px solid var(--border);
 }
 
 .sortable {
@@ -434,16 +469,16 @@ onMounted(async () => {
 }
 
 .sortable:hover {
-  background: #eaedf1;
+  background: var(--bg-subtle);
 }
 
 .score-badge {
-  font-weight: 700;
+  font-weight: 500;
   font-size: 15px;
 }
 
 .detail-row td {
-  background: #fafafa;
+  background: var(--bg-subtle);
   text-align: left;
 }
 
@@ -461,34 +496,34 @@ onMounted(async () => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  color: #bbb;
+  color: var(--text-muted);
   font-size: 13px;
-  border: 1px dashed #e0e0e0;
-  border-radius: 4px;
+  border: 1px dashed var(--border);
+  border-radius: 16px;
 }
 
 .no-data-msg span {
   font-size: 13px;
-  font-weight: 600;
-  color: #666;
+  font-weight: 500;
+  color: var(--text-muted);
   margin-bottom: 8px;
 }
 
 .no-data-msg p {
   font-size: 20px;
-  color: #ccc;
+  color: var(--text-muted);
   margin: 0;
 }
 
 .status-msg {
   text-align: center;
-  color: #888;
+  color: var(--text-muted);
   padding: 40px;
 }
 
 .error-msg {
   text-align: center;
-  color: #c00;
+  color: var(--danger);
   padding: 40px;
 }
 
@@ -504,13 +539,13 @@ onMounted(async () => {
 }
 
 .modal-dialog {
-  background: #fff;
-  border-radius: 12px;
+  background: var(--surface);
+  border-radius: 20px;
   width: min(760px, 95vw);
   max-height: 80vh;
   display: flex;
   flex-direction: column;
-  box-shadow: rgba(0,0,0,0.2) 0px 8px 32px;
+  box-shadow: rgba(0,0,0,0.15) 0px 8px 32px, rgba(0,0,0,0.06) 0px 0px 0px 1px;
 }
 
 .modal-header {
@@ -518,13 +553,13 @@ onMounted(async () => {
   align-items: center;
   justify-content: space-between;
   padding: 16px 20px;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .modal-header h3 {
   margin: 0;
   font-size: 15px;
-  font-weight: 600;
+  font-weight: 500;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -536,7 +571,7 @@ onMounted(async () => {
   width: 28px;
   height: 28px;
   border: none;
-  background: #f0f0f0;
+  background: var(--bg);
   border-radius: 50%;
   cursor: pointer;
   font-size: 16px;
@@ -544,9 +579,11 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   justify-content: center;
+  color: var(--text-muted);
+  transition: background 0.12s, color 0.12s;
 }
 
-.modal-close:hover { background: #e0e0e0; }
+.modal-close:hover { background: var(--bg-subtle); color: var(--text); }
 
 .modal-body {
   overflow-y: auto;
@@ -561,20 +598,25 @@ onMounted(async () => {
 
 .refund-table th,
 .refund-table td {
-  border: 1px solid #eee;
-  padding: 7px 10px;
+  border-bottom: 1px solid var(--border-subtle);
+  padding: 8px 10px;
   text-align: center;
 }
 
 .refund-table th {
-  background: #f5f7fa;
-  font-weight: 600;
+  background: var(--surface);
+  font-weight: 500;
+  color: var(--text-muted);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.12px;
+  border-bottom: 1px solid var(--border);
 }
 
 .order-id {
-  font-family: ui-monospace, monospace;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 12px;
-  color: #555;
+  color: var(--text-secondary);
 }
 
 .status-tag {
@@ -585,6 +627,6 @@ onMounted(async () => {
   font-weight: 500;
 }
 
-.tag-refunding { background: #fff3e0; color: #e6a23c; }
-.tag-closed    { background: #fef0f0; color: #f56c6c; }
+.tag-refunding { background: var(--bg-subtle); color: var(--warning); }
+.tag-closed    { background: #fef2f2; color: var(--danger); }
 </style>

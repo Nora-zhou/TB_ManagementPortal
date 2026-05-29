@@ -46,7 +46,7 @@ const selectedStore = ref(1)
   gap: 6px;
   margin-bottom: 24px;
   background: var(--surface);
-  border-radius: 12px;
+  border-radius: 9999px;
   padding: 6px;
   box-shadow: var(--shadow-outline), var(--shadow-soft);
   width: fit-content;
@@ -61,7 +61,7 @@ const selectedStore = ref(1)
   font-weight: 500;
   letter-spacing: 0.13px;
   color: var(--text-muted);
-  border-radius: 8px;
+  border-radius: 9999px;
   transition: color 0.15s, background 0.15s;
 }
 
@@ -90,7 +90,7 @@ const selectedStore = ref(1)
   margin-bottom: 20px;
   padding: 12px 16px;
   background: var(--bg-subtle);
-  border-radius: 10px;
+  border-radius: 16px;
   border: 1px solid var(--border);
 }
 .store-selector label {

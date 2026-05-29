@@ -172,7 +172,7 @@ h2 {
   align-items: center;
   justify-content: center;
   border: 1.5px dashed var(--border);
-  border-radius: 12px;
+  border-radius: 16px;
   padding: 44px 24px;
   cursor: pointer;
   transition: border-color 0.2s, background 0.2s;
@@ -213,7 +213,7 @@ h2 {
   margin-top: 20px;
   padding: 20px 24px;
   background: #f0fdf4; border: 1px solid #bbf7d0;
-  border-radius: 12px;
+  border-radius: 16px;
 }
 .import-result p {
   font-size: 14px; font-weight: 500; color: #166534; margin-bottom: 12px;

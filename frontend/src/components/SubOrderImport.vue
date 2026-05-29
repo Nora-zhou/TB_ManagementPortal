@@ -100,7 +100,7 @@ h3 {
   padding: 14px 18px;
   background: var(--bg-subtle);
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: 16px;
 }
 
 .file-label {
@@ -131,7 +131,7 @@ h3 {
 .result-box {
   margin-top: 0; padding: 16px 20px;
   background: #f0fdf4; border: 1px solid #bbf7d0;
-  border-radius: 12px; font-size: 13px;
+  border-radius: 16px; font-size: 13px;
 }
 .result-box p { font-weight: 500; color: #166534; margin-bottom: 8px; }
 .result-box ul { padding-left: 16px; color: var(--text-secondary); line-height: 1.7; }

@@ -81,7 +81,7 @@ const route = useRoute()
 
 .brand-name {
   font-size: 15px;
-  font-weight: 600;
+  font-weight: 500;
   letter-spacing: 0.15px;
   color: var(--text);
 }
@@ -153,7 +153,7 @@ const route = useRoute()
 .dropdown-item {
   display: block;
   padding: 7px 12px;
-  border-radius: 7px;
+  border-radius: 8px;
   font-size: 13.5px;
   font-weight: 500;
   text-decoration: none;
