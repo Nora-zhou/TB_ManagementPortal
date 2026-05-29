@@ -10,6 +10,7 @@ export async function fetchProducts(params = {}) {
   if (params.store != null) query.set('store', params.store)
   if (params.sort_by) query.set('sort_by', params.sort_by)
   if (params.sort_order) query.set('sort_order', params.sort_order)
+  if (params.margin_filter) query.set('margin_filter', params.margin_filter)
   const resp = await fetch(`${BASE}?${query}`)
   if (!resp.ok) throw new Error((await resp.json()).detail || resp.statusText)
   return resp.json()

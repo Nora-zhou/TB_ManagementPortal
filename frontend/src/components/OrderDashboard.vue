@@ -215,10 +215,19 @@ function pct(n, d) {
 
 <template>
   <div class="dashboard">
-    <h2>订单分析仪表盘</h2>
+    <div class="toolbar">
+      <!-- Row 1: title + store tabs -->
+      <div class="toolbar-row toolbar-row--top">
+        <h2>订单分析仪表盘</h2>
+        <div class="store-filter">
+          <button :class="{ active: storeFilter === null }" @click="setStore(null)">全部</button>
+          <button :class="{ active: storeFilter === 1 }"    @click="setStore(1)">店铺1</button>
+          <button :class="{ active: storeFilter === 2 }"    @click="setStore(2)">店铺2</button>
+        </div>
+      </div>
 
-    <!-- Time filter bar -->
-    <div class="filter-bar">
+      <!-- Row 2: Time filter bar -->
+      <div class="toolbar-row toolbar-row--filters">
       <button :class="{ active: filterMode === 'days7' }"  @click="setMode('days7')">近 7 天</button>
       <button :class="{ active: filterMode === 'days30' }" @click="setMode('days30')">近 30 天</button>
       <button :class="{ active: filterMode === 'days90' }" @click="setMode('days90')">近 90 天</button>
@@ -237,11 +246,6 @@ function pct(n, d) {
         <button class="btn-apply" @click="applyCustom">确认</button>
       </span>
       <span v-if="customError" class="custom-error">{{ customError }}</span>
-      <span class="filter-sep"></span>
-      <div class="store-filter">
-        <button :class="{ active: storeFilter === null }" @click="setStore(null)">全部</button>
-        <button :class="{ active: storeFilter === 1 }"    @click="setStore(1)">店铺1</button>
-        <button :class="{ active: storeFilter === 2 }"    @click="setStore(2)">店铺2</button>
       </div>
     </div>
 
@@ -324,34 +328,47 @@ function pct(n, d) {
 
 <style scoped>
 .dashboard { padding: 0; }
-h2 { font-size: 24px; font-weight: 400; letter-spacing: -0.2px; color: var(--text); margin-bottom: 20px; }
 h3 { margin: 0; font-size: 14px; font-weight: 500; letter-spacing: 0.14px; color: var(--text); }
 
-/* Filter bar */
-.filter-bar {
+/* Toolbar — same two-row pattern as ProductList */
+.toolbar { flex-direction: column; gap: 10px; }
+.toolbar-row--top { display: flex; align-items: center; gap: 12px; }
+.store-filter { display: flex; gap: 4px; }
+.store-filter button {
+  padding: 5px 12px; border-radius: 9999px; font-size: 12px;
+  background: var(--surface); color: var(--text-secondary);
+  border: 1px solid var(--border); box-shadow: var(--shadow-soft);
+  cursor: pointer; transition: all 0.15s;
+}
+.store-filter button:hover:not(.active) { background: var(--bg-subtle); color: var(--text); }
+.store-filter button.active { background: #000; color: #fff; border-color: #000; box-shadow: var(--shadow-card); }
+
+/* Row 2: time filter bar */
+.toolbar-row--filters {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 10px;
   background: var(--surface);
+  border: 1px solid var(--border-subtle);
   border-radius: 12px;
   padding: 10px 16px;
-  margin-bottom: 20px;
-  box-shadow: var(--shadow-outline), var(--shadow-soft);
+  box-shadow: var(--shadow-soft);
 }
-.filter-bar > button {
-  padding: 5px 14px;
+.toolbar-row--filters > button {
+  padding: 5px 12px;
   border: 1px solid var(--border);
   border-radius: 9999px;
-  background: transparent;
+  background: var(--surface);
+  color: var(--text-secondary);
   cursor: pointer;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 500;
-  color: var(--text-muted);
+  box-shadow: var(--shadow-soft);
   transition: all 0.15s;
 }
-.filter-bar > button:hover { color: var(--text); background: var(--bg-subtle); }
-.filter-bar > button.active {
+.toolbar-row--filters > button:hover:not(.active) { color: var(--text); background: var(--bg-subtle); }
+.toolbar-row--filters > button.active {
   background: #000; color: #fff; border-color: #000;
   box-shadow: var(--shadow-card);
 }
@@ -404,23 +421,6 @@ h3 { margin: 0; font-size: 14px; font-weight: 500; letter-spacing: 0.14px; color
 .btn-apply:hover { background: #222; }
 .custom-error { color: var(--danger); font-size: 12px; }
 
-.store-filter {
-  display: inline-flex;
-  gap: 4px;
-}
-.store-filter button {
-  padding: 4px 12px;
-  border: 1px solid var(--border, #ddd);
-  background: transparent;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 13px;
-}
-.store-filter button.active {
-  background: #000;
-  color: #fff;
-  border-color: #000;
-}
 
 /* Cards */
 .cards {

@@ -147,40 +147,44 @@ const grandTotal = computed(() => {
 
 <template>
   <div class="order-list">
-    <div class="list-header">
-      <h2>订单列表</h2>
-      <button class="btn-import" @click="router.push('/orders/import')">+ 导入订单</button>
-    </div>
-
-    <!-- Filters -->
-    <div class="filters">
-      <div class="store-toggle">
-        <button :class="{ active: storeFilter === null }" @click="storeFilter = null; resetAndLoad()">全部</button>
-        <button :class="{ active: storeFilter === 1 }" @click="storeFilter = 1; resetAndLoad()">店铺1</button>
-        <button :class="{ active: storeFilter === 2 }" @click="storeFilter = 2; resetAndLoad()">店铺2</button>
+    <div class="toolbar">
+      <!-- Row 1: title + store tabs -->
+      <div class="toolbar-row toolbar-row--top">
+        <h2>订单列表</h2>
+        <div class="store-filter">
+          <button :class="{ active: storeFilter === null }" @click="storeFilter = null; resetAndLoad()">全部</button>
+          <button :class="{ active: storeFilter === 1 }" @click="storeFilter = 1; resetAndLoad()">店铺1</button>
+          <button :class="{ active: storeFilter === 2 }" @click="storeFilter = 2; resetAndLoad()">店铺2</button>
+        </div>
       </div>
-      <input
-        v-model="keyword"
-        class="input-search"
-        placeholder="搜索商品标题…"
-        @input="onKeywordInput"
-      />
-      <select v-model="statusFilter" class="select-status">
-        <option value="">全部状态</option>
-        <option v-for="s in STATUS_OPTIONS.slice(1)" :key="s" :value="s">{{ s }}</option>
-      </select>
-      <input v-model="startDate" type="date" class="input-date" title="开始日期" />
-      <span class="date-sep">~</span>
-      <input v-model="endDate" type="date" class="input-date" title="结束日期" />
-      <select v-model="sortDir" class="select-sort">
-        <option value="desc">最新在前</option>
-        <option value="asc">最早在前</option>
-      </select>
-      <button
-        v-if="keyword || statusFilter || startDate || endDate"
-        class="btn-reset"
-        @click="resetFilters"
-      >重置</button>
+      <!-- Row 2: filters + actions -->
+      <div class="toolbar-row toolbar-row--filters">
+        <input
+          v-model="keyword"
+          class="input-search"
+          placeholder="搜索商品标题…"
+          @input="onKeywordInput"
+        />
+        <select v-model="statusFilter" class="select-status">
+          <option value="">全部状态</option>
+          <option v-for="s in STATUS_OPTIONS.slice(1)" :key="s" :value="s">{{ s }}</option>
+        </select>
+        <input v-model="startDate" type="date" class="input-date" title="开始日期" />
+        <span class="date-sep">~</span>
+        <input v-model="endDate" type="date" class="input-date" title="结束日期" />
+        <select v-model="sortDir" class="select-sort">
+          <option value="desc">最新在前</option>
+          <option value="asc">最早在前</option>
+        </select>
+        <div class="filter-actions">
+          <button
+            v-if="keyword || statusFilter || startDate || endDate"
+            class="btn-reset"
+            @click="resetFilters"
+          >重置</button>
+          <button class="btn-import" @click="router.push('/orders/import')">+ 导入订单</button>
+        </div>
+      </div>
     </div>
 
     <!-- Error -->
@@ -258,14 +262,26 @@ const grandTotal = computed(() => {
 
 <style scoped>
 .order-list { padding: 0; }
-.list-header {
-  display: flex; align-items: center; justify-content: space-between;
-  margin-bottom: 20px;
+.toolbar { flex-direction: column; gap: 10px; }
+.toolbar-row--top { display: flex; align-items: center; gap: 12px; }
+.store-filter { display: flex; gap: 4px; }
+.store-filter button {
+  padding: 5px 12px; border-radius: 9999px; font-size: 12px;
+  background: var(--surface); color: var(--text-secondary);
+  border: 1px solid var(--border); box-shadow: var(--shadow-soft);
+  cursor: pointer; transition: all 0.15s;
 }
-h2 {
-  margin: 0;
-  font-size: 22px; font-weight: 400; letter-spacing: -0.2px; color: var(--text);
+.store-filter button:hover:not(.active) { background: var(--bg-subtle); color: var(--text); }
+.store-filter button.active { background: #000; color: #fff; border-color: #000; box-shadow: var(--shadow-card); }
+.toolbar-row--filters {
+  display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+  background: var(--surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  padding: 10px 16px;
+  box-shadow: var(--shadow-soft);
 }
+.filter-actions { display: flex; gap: 6px; margin-left: auto; }
 .btn-import {
   padding: 7px 16px; background: #000; color: #fff;
   border: none; border-radius: 9999px; cursor: pointer;
@@ -273,24 +289,6 @@ h2 {
   box-shadow: var(--shadow-card); transition: background 0.15s;
 }
 .btn-import:hover { background: #222; }
-
-.store-toggle {
-  display: flex; gap: 3px;
-}
-.store-toggle button {
-  padding: 5px 12px;
-  border: 1px solid var(--border); border-radius: 9999px;
-  cursor: pointer; background: transparent;
-  font-size: 12px; font-weight: 500; color: var(--text-muted);
-  transition: all 0.15s;
-}
-.store-toggle button.active { background: #000; color: #fff; border-color: #000; }
-.store-toggle button:hover:not(.active) { color: var(--text); background: var(--bg-subtle); }
-
-.filters {
-  display: flex; flex-wrap: wrap; gap: 8px;
-  margin-bottom: 16px; align-items: center;
-}
 .input-search, .select-status, .input-date, .select-sort {
   padding: 7px 12px; border: 1px solid var(--border); border-radius: 8px;
   font-size: 13px; background: var(--surface); color: var(--text);

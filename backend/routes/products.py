@@ -475,6 +475,7 @@ def list_products(
     store: Optional[int] = Query(default=None),
     sort_by: Optional[str] = Query(default=None),
     sort_order: Optional[str] = Query(default="asc"),
+    margin_filter: Optional[str] = Query(default=None),  # "below20" | "above60"
 ) -> ProductListResponse:
     base_query = select(Product)
     if q:
@@ -569,22 +570,36 @@ def list_products(
 
     sold_map: Optional[dict[str, int]] = None
 
-    if sort_by == "gross_margin_pct":
-        # Fetch all filtered products, compute margins, sort in Python, then slice
+    # When margin_filter is set we must compute margins for all products first
+    needs_full_margin = (sort_by == "gross_margin_pct") or (margin_filter in ("below20", "above60"))
+
+    if needs_full_margin:
+        # Fetch all filtered products, compute margins, optionally filter, sort, then slice
         all_products = session.exec(base_query).all()
         all_item_ids = [p.taobao_item_id for p in all_products]
         margin_map = _batch_margin(all_item_ids)
 
-        def _margin_key(p: Product) -> float:
-            v = margin_map.get(p.taobao_item_id)
-            if v is None:
-                return float('inf') if (sort_order or "asc") == "asc" else float('-inf')
-            return v
+        # Apply margin filter
+        if margin_filter == "below20":
+            all_products = [p for p in all_products
+                            if margin_map.get(p.taobao_item_id) is not None
+                            and margin_map[p.taobao_item_id] < 20]
+        elif margin_filter == "above60":
+            all_products = [p for p in all_products
+                            if margin_map.get(p.taobao_item_id) is not None
+                            and margin_map[p.taobao_item_id] > 60]
 
-        reverse = (sort_order or "asc") == "desc"
-        sorted_all = sorted(all_products, key=_margin_key, reverse=reverse)
-        total = len(sorted_all)
-        products = sorted_all[(page - 1) * page_size: page * page_size]
+        if sort_by == "gross_margin_pct":
+            def _margin_key(p: Product) -> float:
+                v = margin_map.get(p.taobao_item_id)
+                if v is None:
+                    return float('inf') if (sort_order or "asc") == "asc" else float('-inf')
+                return v
+            reverse = (sort_order or "asc") == "desc"
+            all_products = sorted(all_products, key=_margin_key, reverse=reverse)
+
+        total = len(all_products)
+        products = all_products[(page - 1) * page_size: page * page_size]
         item_ids = [p.taobao_item_id for p in products]
         page_margin_map = {tid: margin_map.get(tid) for tid in item_ids}
 

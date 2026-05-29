@@ -1,18 +1,37 @@
 <template>
   <div class="product-list-page">
     <div class="toolbar">
-      <h2>商品列表</h2>
-      <div class="filters">
+      <!-- Row 1: title + store tabs -->
+      <div class="toolbar-row toolbar-row--top">
+        <h2>商品列表</h2>
         <div class="store-filter">
           <button :class="{ active: storeFilter === null }" @click="setStore(null)">全部</button>
           <button :class="{ active: storeFilter === 1 }"    @click="setStore(1)">店铺1</button>
           <button :class="{ active: storeFilter === 2 }"    @click="setStore(2)">店铺2</button>
         </div>
-        <input v-model="searchQ" placeholder="搜索商品名称…" @keyup.enter="applyFilters" />
-        <input v-model.number="minPrice" type="number" placeholder="最低价" min="0" />
-        <input v-model.number="maxPrice" type="number" placeholder="最高价" min="0" />
-        <button @click="applyFilters">筛选</button>
-        <button v-if="hasFilter" @click="clearFilters" class="secondary">清除筛选</button>
+      </div>
+      <!-- Row 2: search + filters -->
+      <div class="toolbar-row toolbar-row--filters">
+        <input v-model="searchQ" class="search-input" placeholder="搜索商品名称…" @keyup.enter="applyFilters" />
+        <div class="price-range">
+          <input v-model.number="minPrice" type="number" placeholder="最低价" min="0" />
+          <span class="range-sep">—</span>
+          <input v-model.number="maxPrice" type="number" placeholder="最高价" min="0" />
+        </div>
+        <div class="margin-filter">
+          <button
+            :class="['margin-btn', { active: marginFilter === 'below20' }]"
+            @click="setMarginFilter('below20')"
+          >毛利率 &lt; 20%</button>
+          <button
+            :class="['margin-btn', { active: marginFilter === 'above60' }]"
+            @click="setMarginFilter('above60')"
+          >毛利率 &gt; 60%</button>
+        </div>
+        <div class="filter-actions">
+          <button @click="applyFilters">筛选</button>
+          <button v-if="hasFilter" @click="clearFilters" class="secondary">清除筛选</button>
+        </div>
       </div>
     </div>
 
@@ -31,7 +50,10 @@
         </tr>
       </thead>
       <tbody>
-        <tr v-for="item in sortedProducts" :key="item.id" class="clickable" @click="goDetail(item.id)">
+        <tr v-for="item in sortedProducts" :key="item.id"
+            class="clickable"
+            :class="{ 'row-warn': item.gross_margin_pct != null && item.gross_margin_pct < 20 }"
+            @click="goDetail(item.id)">
           <td>{{ item.taobao_item_id }}</td>
           <td>{{ item.name }}</td>
           <td>{{ item.current_price != null ? `¥${item.current_price.toFixed(2)}` : '暂无价格数据' }}</td>
@@ -84,6 +106,7 @@ const activeQ = ref('')
 const activeMin = ref(null)
 const activeMax = ref(null)
 const storeFilter = ref(null)  // null = 全部, 1 = 店铺1, 2 = 店铺2
+const marginFilter = ref(null) // null | 'below20' | 'above60'
 
 function setStore(val) {
   storeFilter.value = val
@@ -91,7 +114,13 @@ function setStore(val) {
   load()
 }
 
-const hasFilter = computed(() => activeQ.value || activeMin.value != null || activeMax.value != null || storeFilter.value != null)
+function setMarginFilter(val) {
+  marginFilter.value = marginFilter.value === val ? null : val
+  page.value = 1
+  load()
+}
+
+const hasFilter = computed(() => activeQ.value || activeMin.value != null || activeMax.value != null || storeFilter.value != null || marginFilter.value != null)
 
 const sortOrder = ref('none')
 const sortArrow = computed(() => {
@@ -146,6 +175,7 @@ function marginClass(pct) {
   if (pct == null) return ''
   if (pct < 0) return 'margin-red'
   if (pct < 10) return 'margin-orange'
+  if (pct < 20) return 'margin-yellow'
   return ''
 }
 
@@ -159,6 +189,7 @@ async function load() {
     if (activeMin.value != null) params.min_price = activeMin.value
     if (activeMax.value != null) params.max_price = activeMax.value
     if (storeFilter.value != null) params.store = storeFilter.value
+    if (marginFilter.value != null) params.margin_filter = marginFilter.value
     if (marginSortBy.value != null) {
       params.sort_by = 'gross_margin_pct'
       params.sort_order = marginSortBy.value
@@ -203,6 +234,7 @@ function clearFilters() {
   activeMin.value = null
   activeMax.value = null
   storeFilter.value = null
+  marginFilter.value = null
   page.value = 1
   load()
 }
@@ -226,12 +258,36 @@ onMounted(load)
 
 <style scoped>
 .product-list-page { padding: 0; }
-.toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; }
+.toolbar { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
+.toolbar-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.toolbar-row--top { gap: 12px; }
 .toolbar h2 {
   margin: 0; flex: 1;
   font-size: 22px; font-weight: 400; letter-spacing: -0.2px; color: var(--text);
 }
-.filters { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.toolbar-row--filters {
+  background: var(--surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  padding: 10px 16px;
+  gap: 10px;
+  box-shadow: var(--shadow-soft);
+}
+.search-input {
+  padding: 7px 12px; border: 1px solid var(--border); border-radius: 8px;
+  width: 200px; font-size: 13px; background: var(--surface); color: var(--text);
+  box-shadow: var(--shadow-inset); outline: none;
+}
+.search-input:focus { border-color: rgba(0,0,0,0.3); box-shadow: var(--shadow-inset), 0 0 0 3px rgba(147,197,253,0.5); }
+.price-range { display: flex; align-items: center; gap: 6px; }
+.price-range input {
+  padding: 7px 10px; border: 1px solid var(--border); border-radius: 8px;
+  width: 90px; font-size: 13px; background: var(--surface); color: var(--text);
+  box-shadow: var(--shadow-inset); outline: none;
+}
+.price-range input:focus { border-color: rgba(0,0,0,0.3); box-shadow: var(--shadow-inset), 0 0 0 3px rgba(147,197,253,0.5); }
+.range-sep { color: var(--text-muted); font-size: 13px; }
+.filter-actions { display: flex; gap: 6px; margin-left: auto; }
 .store-filter { display: flex; gap: 4px; }
 .store-filter button {
   padding: 5px 12px; border-radius: 9999px; font-size: 12px;
@@ -241,12 +297,6 @@ onMounted(load)
 .store-filter button.active {
   background: #000; color: #fff; border-color: #000; box-shadow: var(--shadow-card);
 }
-.filters input {
-  padding: 7px 12px; border: 1px solid var(--border); border-radius: 8px;
-  width: 140px; font-size: 13px; background: var(--surface); color: var(--text);
-  box-shadow: var(--shadow-inset); outline: none;
-}
-.filters input:focus { border-color: rgba(0,0,0,0.3); box-shadow: var(--shadow-inset), 0 0 0 3px rgba(147,197,253,0.5); }
 button {
   padding: 7px 16px; background: #000; color: #fff; border: none;
   border-radius: 9999px; cursor: pointer; font-size: 13px; font-weight: 500;
@@ -309,7 +359,21 @@ tr.clickable:hover { background: var(--bg-subtle); }
   display: flex; justify-content: space-between; align-items: center;
   font-size: 13px; margin-bottom: 12px;
 }
-.margin-red { color: #ef4444; font-weight: 600; }
+.margin-red    { color: #ef4444; font-weight: 600; }
 .margin-orange { color: #f97316; font-weight: 600; }
+.margin-yellow { color: #b45309; font-weight: 600; }
 .muted { color: var(--text-muted); }
+
+.margin-filter { display: flex; gap: 4px; }
+.margin-btn {
+  padding: 5px 10px; border-radius: 9999px; font-size: 12px; font-weight: 500;
+  background: var(--surface); color: var(--text-secondary);
+  border: 1px solid var(--border); box-shadow: var(--shadow-soft); cursor: pointer;
+  transition: background 0.12s;
+}
+.margin-btn.active { background: #000; color: #fff; border-color: #000; }
+.margin-btn:hover:not(.active) { background: var(--bg-subtle); color: var(--text); }
+
+tr.row-warn td { background: #fffbeb !important; }
+tr.row-warn:hover td { background: #fef3c7 !important; }
 </style>
