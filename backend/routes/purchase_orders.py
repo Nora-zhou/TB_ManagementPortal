@@ -27,6 +27,7 @@ from schemas import (
     SupplierEvaluationResponse,
     ReturnRateGoodsItem,
     SupplierEvaluationDetail,
+    RefundOrderItem,
 )
 
 router = APIRouter(prefix="/purchase-orders", tags=["purchase-orders"])
@@ -914,3 +915,51 @@ def get_supplier_evaluation_detail(
         },
         top_return_goods=top_return_goods,
     )
+
+
+@router.get("/refund-orders", response_model=list[RefundOrderItem])
+def get_refund_orders(
+    seller_name: str,
+    goods_title: str,
+    start_month: Optional[str] = None,
+    end_month: Optional[str] = None,
+    session: Session = Depends(get_session),
+):
+    """Return all refund orders for a specific supplier + goods_title."""
+    conditions = [
+        PurchaseOrder.seller_name == seller_name,
+        PurchaseOrder.goods_title == goods_title,
+        (
+            (PurchaseOrder.status == "退款中")
+            | (
+                (PurchaseOrder.status == "交易关闭")
+                & (PurchaseOrder.paid_amount > 0)
+            )
+        ),
+    ]
+    if start_month:
+        conditions.append(
+            func.strftime("%Y-%m", PurchaseOrder.created_at) >= start_month
+        )
+    if end_month:
+        conditions.append(
+            func.strftime("%Y-%m", PurchaseOrder.created_at) <= end_month
+        )
+    stmt = (
+        select(PurchaseOrder)
+        .where(*conditions)
+        .order_by(PurchaseOrder.created_at.desc())
+    )
+    rows = session.exec(stmt).all()
+    return [
+        RefundOrderItem(
+            order_id=r.order_id,
+            goods_title=r.goods_title,
+            status=r.status,
+            paid_amount=r.paid_amount,
+            quantity=r.quantity,
+            unit_price=r.unit_price,
+            created_at=r.created_at.strftime("%Y-%m-%d") if r.created_at else None,
+        )
+        for r in rows
+    ]

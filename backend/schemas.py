@@ -159,6 +159,16 @@ class SupplierEvaluationDetail(BaseModel):
     top_return_goods: list[ReturnRateGoodsItem]
 
 
+class RefundOrderItem(BaseModel):
+    order_id: str
+    goods_title: Optional[str]
+    status: str
+    paid_amount: float
+    quantity: Optional[int]
+    unit_price: Optional[float]
+    created_at: Optional[str]   # ISO date string
+
+
 class OrderPriceSeriesResponse(BaseModel):
     product_id: int
     taobao_item_id: str

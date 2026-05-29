@@ -16,6 +16,7 @@ import {
   fetchAvailableMonths,
   fetchSupplierEvaluation,
   fetchSupplierEvaluationDetail,
+  fetchRefundOrders,
 } from '../api/purchase_orders.js'
 
 use([CanvasRenderer, RadarChart, BarChart, TitleComponent, TooltipComponent, LegendComponent, LegendScrollComponent, GridComponent])
@@ -192,6 +193,7 @@ function returnRateOption(detail) {
     series: [{
       type: 'bar',
       data: counts,
+      cursor: 'pointer',
       label: {
         show: true,
         position: 'right',
@@ -199,6 +201,32 @@ function returnRateOption(detail) {
       },
       itemStyle: { color: '#f56c6c' },
     }],
+  }
+}
+
+// ── Refund order modal ───────────────────────────────────────────────────
+const modal = ref({ visible: false, loading: false, error: null, title: '', orders: [] })
+
+function onBarClick(sellerName, detail, params) {
+  if (params.componentType !== 'series') return
+  const goods = [...detail.top_return_goods].reverse()
+  const item = goods[params.dataIndex]
+  if (!item) return
+  openRefundModal(sellerName, item.goods_title)
+}
+
+async function openRefundModal(sellerName, goodsTitle) {
+  modal.value = { visible: true, loading: true, error: null, title: goodsTitle, orders: [] }
+  const params = {}
+  if (startMonth.value) params.startMonth = startMonth.value
+  if (endMonth.value) params.endMonth = endMonth.value
+  try {
+    const data = await fetchRefundOrders(sellerName, goodsTitle, params)
+    modal.value.orders = data
+  } catch (e) {
+    modal.value.error = e?.detail || '加载失败'
+  } finally {
+    modal.value.loading = false
   }
 }
 
@@ -291,6 +319,7 @@ onMounted(async () => {
                     :option="returnRateOption(detailData[s.seller_name])"
                     autoresize
                     style="height:320px;width:100%;"
+                    @click="(p) => onBarClick(s.seller_name, detailData[s.seller_name], p)"
                   />
                   <div v-else class="no-data-msg">
                     <span>退货率 Top 5 商品</span>
@@ -303,6 +332,43 @@ onMounted(async () => {
         </template>
       </tbody>
     </table>
+
+    <!-- Refund order modal -->
+    <div v-if="modal.visible" class="modal-overlay" @click.self="modal.visible = false">
+      <div class="modal-dialog">
+        <div class="modal-header">
+          <h3>退款订单 &mdash; {{ modal.title }}</h3>
+          <button class="modal-close" @click="modal.visible = false">×</button>
+        </div>
+        <div class="modal-body">
+          <div v-if="modal.loading" class="status-msg">加载中…</div>
+          <div v-else-if="modal.error" class="error-msg">{{ modal.error }}</div>
+          <div v-else-if="modal.orders.length === 0" class="status-msg">暂无退款订单</div>
+          <table v-else class="refund-table">
+            <thead>
+              <tr>
+                <th>订单号</th>
+                <th>状态</th>
+                <th>实付金额</th>
+                <th>数量</th>
+                <th>单价</th>
+                <th>下单日期</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="o in modal.orders" :key="o.order_id">
+                <td class="order-id">{{ o.order_id }}</td>
+                <td><span :class="['status-tag', o.status === '退款中' ? 'tag-refunding' : 'tag-closed']">{{ o.status }}</span></td>
+                <td>￥{{ o.paid_amount.toFixed(2) }}</td>
+                <td>{{ o.quantity ?? '—' }}</td>
+                <td>{{ o.unit_price != null ? '￥' + o.unit_price.toFixed(2) : '—' }}</td>
+                <td>{{ o.created_at ?? '—' }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -425,4 +491,100 @@ onMounted(async () => {
   color: #c00;
   padding: 40px;
 }
+
+/* ── Refund order modal ─────────────────────────────────────────────────── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-dialog {
+  background: #fff;
+  border-radius: 12px;
+  width: min(760px, 95vw);
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: rgba(0,0,0,0.2) 0px 8px 32px;
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid #eee;
+}
+
+.modal-header h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: calc(100% - 40px);
+}
+
+.modal-close {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: #f0f0f0;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-close:hover { background: #e0e0e0; }
+
+.modal-body {
+  overflow-y: auto;
+  padding: 16px 20px;
+}
+
+.refund-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.refund-table th,
+.refund-table td {
+  border: 1px solid #eee;
+  padding: 7px 10px;
+  text-align: center;
+}
+
+.refund-table th {
+  background: #f5f7fa;
+  font-weight: 600;
+}
+
+.order-id {
+  font-family: ui-monospace, monospace;
+  font-size: 12px;
+  color: #555;
+}
+
+.status-tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.tag-refunding { background: #fff3e0; color: #e6a23c; }
+.tag-closed    { background: #fef0f0; color: #f56c6c; }
 </style>
