@@ -124,6 +124,41 @@ class SupplierDashboardResponse(BaseModel):
     monthly_data: list[SupplierMonthlyItem]
 
 
+# ---------------------------------------------------------------------------
+# SupplierEvaluation schemas (007-supplier-dashboard Part 2)
+# ---------------------------------------------------------------------------
+
+class SupplierEvaluationItem(BaseModel):
+    seller_name: str
+    score: Optional[float]
+    label: str
+    completion_rate: Optional[float]
+    price_stability: Optional[float]
+    activity_rate: Optional[float]
+    price_trend_score: Optional[float]
+    total_amount: float
+    order_count: int
+
+
+class SupplierEvaluationResponse(BaseModel):
+    suppliers: list[SupplierEvaluationItem]
+
+
+class ReturnRateGoodsItem(BaseModel):
+    goods_title: str
+    return_rate: float   # percentage 0–100
+    return_count: int
+    total_count: int
+
+
+class SupplierEvaluationDetail(BaseModel):
+    seller_name: str
+    score: Optional[float]
+    label: str
+    dimensions: dict[str, Optional[float]]
+    top_return_goods: list[ReturnRateGoodsItem]
+
+
 class OrderPriceSeriesResponse(BaseModel):
     product_id: int
     taobao_item_id: str

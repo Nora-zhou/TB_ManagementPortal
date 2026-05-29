@@ -145,11 +145,11 @@ const pieOption = computed(() => {
     <div class="filter-row">
       <label class="filter-label">
         开始月份
-        <input v-model="startMonth" type="month" class="month-input" />
+        <input v-model="startMonth" type="text" placeholder="YYYY-MM" maxlength="7" class="month-input" />
       </label>
       <label class="filter-label">
         结束月份
-        <input v-model="endMonth" type="month" class="month-input" />
+        <input v-model="endMonth" type="text" placeholder="YYYY-MM" maxlength="7" class="month-input" />
       </label>
     </div>
 

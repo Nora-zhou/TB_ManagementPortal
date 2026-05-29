@@ -150,6 +150,9 @@ watch([selectedSeller, detailPage], ([seller]) => {
       <button @click="router.push('/suppliers/dashboard')" class="btn-chart">
         📊 趋势图表
       </button>
+      <button @click="router.push('/suppliers/evaluation')" class="btn-eval">
+        🏅 供应商评估
+      </button>
     </div>
 
     <!-- ── Filter bar ──────────────────────────────────────────────────────── -->
@@ -319,18 +322,38 @@ watch([selectedSeller, detailPage], ([seller]) => {
 
 .btn-chart {
   flex-shrink: 0;
-  padding: 8px 18px;
-  background: #3b82f6;
-  color: #fff;
-  border: none;
-  border-radius: 8px;
+  padding: 8px 20px;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 9999px;
   cursor: pointer;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 500;
+  box-shadow: var(--shadow-soft);
   transition: background 0.15s;
   white-space: nowrap;
 }
-.btn-chart:hover { background: #2563eb; }
+.btn-chart:hover { background: var(--bg-subtle); }
+
+.btn-eval {
+  flex-shrink: 0;
+  padding: 8px 20px;
+  background: rgba(245, 242, 239, 0.9);
+  color: #000;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 9999px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  box-shadow: rgba(78, 50, 23, 0.08) 0px 4px 12px;
+  transition: background 0.15s, box-shadow 0.15s;
+  white-space: nowrap;
+}
+.btn-eval:hover {
+  background: rgba(238, 233, 228, 0.95);
+  box-shadow: rgba(78, 50, 23, 0.12) 0px 6px 16px;
+}
 
 /* ── Filter bar ──────────────────────────────────────────────────────────── */
 .filter-bar {

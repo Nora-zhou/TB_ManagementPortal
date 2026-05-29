@@ -169,9 +169,9 @@ const grandTotal = computed(() => {
           <option value="">全部状态</option>
           <option v-for="s in STATUS_OPTIONS.slice(1)" :key="s" :value="s">{{ s }}</option>
         </select>
-        <input v-model="startDate" type="date" class="input-date" title="开始日期" />
+        <input v-model="startDate" type="text" placeholder="YYYY-MM-DD" maxlength="10" class="input-date" title="开始日期" />
         <span class="date-sep">~</span>
-        <input v-model="endDate" type="date" class="input-date" title="结束日期" />
+        <input v-model="endDate" type="text" placeholder="YYYY-MM-DD" maxlength="10" class="input-date" title="结束日期" />
         <select v-model="sortDir" class="select-sort">
           <option value="desc">最新在前</option>
           <option value="asc">最早在前</option>

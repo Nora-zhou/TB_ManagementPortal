@@ -451,4 +451,6 @@ onMounted(async () => {
   background: #fee2e2;
   border-radius: 8px;
 }
+
+
 </style>

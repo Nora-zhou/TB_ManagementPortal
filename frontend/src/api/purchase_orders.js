@@ -72,3 +72,32 @@ export async function fetchSupplierDashboard({ topN = 15, startMonth, endMonth, 
   if (!res.ok) throw await res.json()
   return res.json()
 }
+
+/**
+ * T017 — Fetch supplier evaluation scores for all suppliers.
+ * @param {{ startMonth?: string, endMonth?: string }} options
+ */
+export async function fetchSupplierEvaluation({ startMonth, endMonth } = {}) {
+  const p = new URLSearchParams()
+  if (startMonth) p.append('start_month', startMonth)
+  if (endMonth) p.append('end_month', endMonth)
+  const qs = p.toString() ? '?' + p : ''
+  const res = await fetch(`${BASE}/evaluation${qs}`)
+  if (!res.ok) throw await res.json()
+  return res.json()
+}
+
+/**
+ * T017 — Fetch detailed evaluation for a single supplier.
+ * @param {string} sellerName
+ * @param {{ startMonth?: string, endMonth?: string }} options
+ */
+export async function fetchSupplierEvaluationDetail(sellerName, { startMonth, endMonth } = {}) {
+  const p = new URLSearchParams()
+  if (startMonth) p.append('start_month', startMonth)
+  if (endMonth) p.append('end_month', endMonth)
+  const qs = p.toString() ? '?' + p : ''
+  const res = await fetch(`${BASE}/evaluation/${encodeURIComponent(sellerName)}${qs}`)
+  if (!res.ok) throw await res.json()
+  return res.json()
+}

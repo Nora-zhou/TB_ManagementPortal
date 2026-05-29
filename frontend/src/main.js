@@ -11,6 +11,7 @@ import DataImport from './components/DataImport.vue'
 import SupplierManagement from './components/SupplierManagement.vue'
 import SupplierDashboard from './components/SupplierDashboard.vue'
 import HomeDashboard from './components/HomeDashboard.vue'
+import SupplierEvaluation from './components/SupplierEvaluation.vue'
 
 const router = createRouter({
   history: createWebHashHistory(),
@@ -24,6 +25,7 @@ const router = createRouter({
     { path: '/import', component: DataImport },
     { path: '/suppliers', component: SupplierManagement },
     { path: '/suppliers/dashboard', component: SupplierDashboard },
+    { path: '/suppliers/evaluation', component: SupplierEvaluation },
   ],
 })
 

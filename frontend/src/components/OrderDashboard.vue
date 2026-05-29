@@ -234,15 +234,15 @@ function pct(n, d) {
       <span class="filter-sep"></span>
       <label class="filter-month">
         按月份
-        <input type="month" v-model="selectedMonth" @change="onMonthChange"
-               :class="{ active: filterMode === 'month' }" />
+        <input type="text" placeholder="YYYY-MM" maxlength="7" v-model="selectedMonth" @change="onMonthChange"
+               class="month-input" :class="{ active: filterMode === 'month' }" />
       </label>
       <span class="filter-sep"></span>
       <span class="filter-custom" :class="{ active: filterMode === 'custom' }">
         自定义
-        <input type="date" v-model="customStart" />
+        <input type="text" placeholder="YYYY-MM-DD" maxlength="10" class="date-input" v-model="customStart" />
         <span>~</span>
-        <input type="date" v-model="customEnd" />
+        <input type="text" placeholder="YYYY-MM-DD" maxlength="10" class="date-input" v-model="customEnd" />
         <button class="btn-apply" @click="applyCustom">确认</button>
       </span>
       <span v-if="customError" class="custom-error">{{ customError }}</span>
@@ -381,7 +381,7 @@ h3 { margin: 0; font-size: 14px; font-weight: 500; letter-spacing: 0.14px; color
   color: var(--text-muted);
   cursor: pointer;
 }
-.filter-month input[type="month"] {
+.filter-month .month-input {
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 4px 8px;
@@ -400,7 +400,7 @@ h3 { margin: 0; font-size: 14px; font-weight: 500; letter-spacing: 0.14px; color
   color: var(--text-muted);
 }
 .filter-custom.active { color: var(--text); }
-.filter-custom input[type="date"] {
+.filter-custom .date-input {
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 4px 8px;
