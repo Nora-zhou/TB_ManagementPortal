@@ -7,6 +7,7 @@ import {
   fetchSKUCostSuggest,
   fetchProfitSummary,
   fetchProductProfitMonthly,
+  fetchMonthOrders,
 } from '../api/products.js'
 
 const props = defineProps({ productId: { type: Number, required: true } })
@@ -19,6 +20,24 @@ const summaryError = ref(null)
 // ── Monthly data ──
 const monthly = ref([])
 const loadingMonthly = ref(false)
+
+// ── Month detail (click on bar) ──
+const selectedMonth = ref(null)
+const monthDetail = ref(null)
+const loadingDetail = ref(false)
+
+async function selectMonth(month) {
+  if (selectedMonth.value === month) { selectedMonth.value = null; monthDetail.value = null; return }
+  selectedMonth.value = month
+  loadingDetail.value = true
+  try {
+    monthDetail.value = await fetchMonthOrders(props.productId, month)
+  } catch {
+    monthDetail.value = null
+  } finally {
+    loadingDetail.value = false
+  }
+}
 
 // ── SKU costs editor ──
 const skuItems = ref([])
@@ -51,7 +70,7 @@ async function loadMonthly() {
   loadingMonthly.value = true
   try {
     const data = await fetchProductProfitMonthly(props.productId)
-    monthly.value = (data.months || []).slice(-12)
+    monthly.value = (data.items || data.months || []).slice(-12)
   } catch {
     monthly.value = []
   } finally {
@@ -137,7 +156,7 @@ function maxAbsProfit() {
   return Math.max(1, ...monthly.value.map(m => Math.abs(m.gross_profit ?? 0)))
 }
 function barHeight(value) {
-  return Math.round((Math.abs(value ?? 0) / maxAbsProfit()) * 80)
+  return Math.round((Math.abs(value ?? 0) / maxAbsProfit()) * 200)
 }
 
 // ── Format helpers ──
@@ -156,7 +175,7 @@ function marginColor(n) {
   return 'kpi--green'
 }
 
-watch(() => props.productId, loadAll)
+watch(() => props.productId, () => { selectedMonth.value = null; monthDetail.value = null; loadAll() })
 onMounted(loadAll)
 </script>
 
@@ -245,23 +264,72 @@ onMounted(loadAll)
 
         <!-- Monthly bar chart -->
         <div class="monthly-chart">
-          <h4 class="subsection-title">月度毛利走势（近 12 个月）</h4>
+          <h4 class="subsection-title">月度毛利走势（近 12 个月）<span v-if="selectedMonth" class="month-hint">点击同一月份取消选中</span></h4>
           <div v-if="loadingMonthly" class="muted">加载中…</div>
           <div v-else-if="monthly.length === 0" class="muted">暂无月度数据</div>
-          <div v-else class="bar-chart">
-            <div
-              v-for="m in monthly"
-              :key="m.month"
-              class="bar-col"
-            >
-              <div class="bar-wrap">
-                <div
-                  class="bar"
-                  :style="{ height: barHeight(m.gross_profit) + 'px', background: barColor(m.gross_profit) }"
-                  :title="`${m.month}: ¥${fmt(m.gross_profit)}`"
-                />
+          <div v-else class="chart-detail-layout">
+            <!-- Bar chart -->
+            <div class="bar-chart">
+              <div
+                v-for="m in monthly"
+                :key="m.month"
+                class="bar-col"
+                :class="{ 'bar-col--selected': selectedMonth === m.month }"
+                @click="selectMonth(m.month)"
+              >
+                <div class="bar-value-label">{{ m.gross_profit > 0 ? '¥' + fmt(m.gross_profit) : '' }}</div>
+                <div class="bar-wrap">
+                  <div
+                    class="bar"
+                    :style="{ height: barHeight(m.gross_profit) + 'px', background: barColor(m.gross_profit) }"
+                    :title="`${m.month}: ¥${fmt(m.gross_profit)}`"
+                  />
+                </div>
+                <div class="bar-label">{{ m.month?.slice(5) }}</div>
               </div>
-              <div class="bar-label">{{ m.month?.slice(5) }}</div>
+            </div>
+
+            <!-- Month detail panel -->
+            <div v-if="selectedMonth" class="month-detail">
+              <div class="month-detail-header">
+                <span class="month-detail-title">{{ selectedMonth }} 订单明细</span>
+                <button class="month-detail-close" @click="selectedMonth = null; monthDetail = null">×</button>
+              </div>
+              <div v-if="loadingDetail" class="muted">加载中…</div>
+              <template v-else-if="monthDetail">
+                <div class="month-kpis">
+                  <span>已售 <strong>{{ monthDetail.units_sold }}</strong> 件</span>
+                  <span>收入 <strong>¥{{ fmt(monthDetail.revenue) }}</strong></span>
+                  <span>成本 <strong>¥{{ fmt(monthDetail.cost) }}</strong></span>
+                  <span :class="monthDetail.gross_profit >= 0 ? 'kpi--green' : 'kpi--red'">毛利 <strong>¥{{ fmt(monthDetail.gross_profit) }}</strong></span>
+                </div>
+                <div class="detail-table-wrap">
+                  <table class="detail-table">
+                    <thead>
+                      <tr>
+                        <th>日期</th>
+                        <th>SKU</th>
+                        <th class="num">数量</th>
+                        <th class="num">实付</th>
+                        <th class="num">成本</th>
+                        <th class="num">毛利</th>
+                        <th>状态</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr v-for="o in monthDetail.orders" :key="o.sub_order_id" :class="{ 'row--refund': o.refund_amount > 0 }">
+                        <td class="mono">{{ o.date }}</td>
+                        <td class="sku-cell" :title="o.sku_name">{{ o.sku_name }}</td>
+                        <td class="num">{{ o.quantity }}</td>
+                        <td class="num">¥{{ fmt(o.buyer_paid) }}</td>
+                        <td class="num">¥{{ fmt(o.quantity * o.unit_cost) }}</td>
+                        <td class="num" :class="o.gross_profit >= 0 ? 'profit-pos' : 'profit-neg'">¥{{ fmt(o.gross_profit) }}</td>
+                        <td class="status-cell">{{ o.status }}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </template>
             </div>
           </div>
         </div>
@@ -318,10 +386,37 @@ onMounted(loadAll)
 .kpi--orange { color: #e67e22 !important; }
 .kpi--green  { color: #27ae60 !important; }
 
+/* Monthly chart */
+.monthly-chart { display: flex; flex-direction: column; gap: 10px; }
+.month-hint { font-size: 11px; color: var(--text-muted); font-weight: 400; margin-left: 8px; }
+.chart-detail-layout { display: flex; gap: 20px; align-items: flex-start; }
+
 /* Bar chart */
-.bar-chart { display: flex; gap: 6px; align-items: flex-end; overflow-x: auto; padding-bottom: 4px; }
-.bar-col   { display: flex; flex-direction: column; align-items: center; min-width: 32px; }
-.bar-wrap  { height: 90px; display: flex; align-items: flex-end; }
-.bar       { width: 24px; border-radius: 3px 3px 0 0; min-height: 2px; transition: height 0.2s; }
+.bar-chart { display: flex; gap: 8px; align-items: flex-end; padding-bottom: 4px; overflow-x: auto; flex-shrink: 0; }
+.bar-col   { display: flex; flex-direction: column; align-items: center; min-width: 56px; cursor: pointer; border-radius: 6px; padding: 4px 4px 0; transition: background .12s; }
+.bar-col:hover { background: var(--bg-subtle, #f5f5f5); }
+.bar-col--selected { background: #e8f0fe; }
+.bar-value-label { font-size: 10px; color: var(--text-muted); white-space: nowrap; margin-bottom: 2px; height: 14px; }
+.bar-wrap  { height: 220px; display: flex; align-items: flex-end; }
+.bar       { width: 36px; border-radius: 4px 4px 0 0; min-height: 3px; transition: height 0.2s; }
 .bar-label { font-size: 11px; color: var(--text-muted); margin-top: 4px; white-space: nowrap; }
+
+/* Month detail panel */
+.month-detail { flex: 1; min-width: 0; border: 1px solid var(--border-subtle); border-radius: 10px; overflow: hidden; }
+.month-detail-header { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: var(--bg-subtle, #f8f8f8); border-bottom: 1px solid var(--border-subtle); }
+.month-detail-title { font-size: 13.5px; font-weight: 600; color: var(--text); }
+.month-detail-close { background: none; border: none; cursor: pointer; font-size: 16px; color: var(--text-muted); padding: 0 4px; line-height: 1; }
+.month-kpis { display: flex; gap: 16px; padding: 8px 14px; font-size: 12.5px; color: var(--text-muted); border-bottom: 1px solid var(--border-subtle); flex-wrap: wrap; }
+.month-kpis strong { color: var(--text); }
+.detail-table-wrap { overflow-x: auto; max-height: 260px; overflow-y: auto; }
+.detail-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.detail-table th { position: sticky; top: 0; background: var(--bg-subtle, #f8f8f8); text-align: left; padding: 6px 10px; color: var(--text-muted); font-weight: 600; border-bottom: 1px solid var(--border-subtle); white-space: nowrap; }
+.detail-table td { padding: 5px 10px; border-top: 1px solid var(--border-subtle); white-space: nowrap; }
+.detail-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+.detail-table .mono { font-family: ui-monospace, monospace; font-size: 11.5px; color: var(--text-muted); }
+.detail-table .sku-cell { max-width: 140px; overflow: hidden; text-overflow: ellipsis; }
+.detail-table .status-cell { font-size: 11px; color: var(--text-muted); }
+.detail-table .profit-pos { color: #27ae60; font-weight: 600; }
+.detail-table .profit-neg { color: #e74c3c; font-weight: 600; }
+.detail-table .row--refund td { background: #fff8f8; }
 </style>

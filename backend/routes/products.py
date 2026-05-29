@@ -28,6 +28,8 @@ from schemas import (
     ProductProfitSummary,
     ProductProfitMonthlyResponse,
     ProductProfitMonthly,
+    MonthOrderDetail,
+    MonthOrdersResponse,
 )
 from taobao_client import fetch_store_items
 
@@ -490,11 +492,11 @@ def list_products(
         sql = text("""
             SELECT
                 so.taobao_item_id,
-                SUM(CASE WHEN so.status = '交易成功'
+                SUM(CASE WHEN so.status IN ('交易成功', '卖家已发货，等待买家确认')
                          THEN so.buyer_paid ELSE 0.0 END) -
-                SUM(CASE WHEN so.status = '交易成功'
+                SUM(CASE WHEN so.status IN ('交易成功', '卖家已发货，等待买家确认')
                          THEN CAST(so.refund_amount AS REAL) ELSE 0.0 END) AS revenue,
-                SUM(CASE WHEN so.status = '交易成功'
+                SUM(CASE WHEN so.status IN ('交易成功', '卖家已发货，等待买家确认')
                          THEN so.quantity * COALESCE(psc.purchase_cost, 0.0)
                          ELSE 0.0 END) AS cost
             FROM suborder so
@@ -555,7 +557,7 @@ def list_products(
                 select(SubOrder.taobao_item_id, func.sum(SubOrder.quantity))
                 .where(
                     col(SubOrder.taobao_item_id).in_(item_ids),
-                    SubOrder.status == "交易成功",
+                    col(SubOrder.status).in_(["交易成功", "卖家已发货，等待买家确认"]),
                     SubOrder.refund_amount == "无退款申请",
                     SubOrder.paid_at >= cutoff,
                 )
@@ -705,7 +707,7 @@ def get_order_price_series(
     query = (
         select(SubOrder)
         .where(SubOrder.taobao_item_id == product.taobao_item_id)
-        .where(SubOrder.status == "交易成功")
+        .where(col(SubOrder.status).in_(["交易成功", "卖家已发货，等待买家确认"]))
         .where(SubOrder.refund_amount == "无退款申请")
     )
 
@@ -885,11 +887,11 @@ def get_profit_summary(product_id: int, session: SessionDep) -> ProductProfitSum
                 COALESCE(psc.purchase_cost, 0.0)                                             AS unit_cost,
                 CASE WHEN psc.purchase_cost IS NULL AND COALESCE(so.product_attr,'') != ''
                      THEN 1 ELSE 0 END                                                       AS missing_cost,
-                SUM(CASE WHEN so.status = '交易成功'
+                SUM(CASE WHEN so.status IN ('交易成功', '卖家已发货，等待买家确认')
                          THEN so.quantity   ELSE 0   END)                                    AS units_sold,
-                SUM(CASE WHEN so.status = '交易成功'
+                SUM(CASE WHEN so.status IN ('交易成功', '卖家已发货，等待买家确认')
                          THEN so.buyer_paid ELSE 0.0 END)                                    AS gross_revenue,
-                SUM(CASE WHEN so.status = '交易成功'
+                SUM(CASE WHEN so.status IN ('交易成功', '卖家已发货，等待买家确认')
                          THEN CAST(so.refund_amount AS REAL) ELSE 0.0 END)                   AS refund
             FROM suborder so
             LEFT JOIN productskucost psc
@@ -909,6 +911,14 @@ def get_profit_summary(product_id: int, session: SessionDep) -> ProductProfitSum
     has_missing = any(int(r[2] or 0) for r in rows)
     weighted_avg_cost = round(cost / units_sold, 4) if units_sold > 0 else 0.0
 
+    cost_configured_count = session.execute(
+        text("""
+            SELECT COUNT(*) FROM productskucost
+            WHERE taobao_item_id = :item_id AND purchase_cost IS NOT NULL
+        """),
+        {"item_id": product.taobao_item_id},
+    ).scalar() or 0
+
     return ProductProfitSummary(
         taobao_item_id=product.taobao_item_id,
         units_sold=units_sold,
@@ -918,6 +928,7 @@ def get_profit_summary(product_id: int, session: SessionDep) -> ProductProfitSum
         gross_profit=round(gross_profit, 2),
         gross_margin_pct=gross_margin_pct,
         has_missing_sku_cost=has_missing,
+        cost_configured=cost_configured_count > 0,
     )
 
 
@@ -942,11 +953,11 @@ def get_profit_monthly(product_id: int, session: SessionDep) -> ProductProfitMon
                 COALESCE(psc.purchase_cost, 0.0)                         AS unit_cost,
                 CASE WHEN psc.purchase_cost IS NULL AND COALESCE(so.product_attr,'') != ''
                      THEN 1 ELSE 0 END                                   AS missing_cost,
-                SUM(CASE WHEN so.status = '交易成功'
+                SUM(CASE WHEN so.status IN ('交易成功', '卖家已发货，等待买家确认')
                          THEN so.quantity   ELSE 0   END)                AS units_sold,
-                SUM(CASE WHEN so.status = '交易成功'
+                SUM(CASE WHEN so.status IN ('交易成功', '卖家已发货，等待买家确认')
                          THEN so.buyer_paid ELSE 0.0 END)                AS gross_revenue,
-                SUM(CASE WHEN so.status = '交易成功'
+                SUM(CASE WHEN so.status IN ('交易成功', '卖家已发货，等待买家确认')
                          THEN CAST(so.refund_amount AS REAL) ELSE 0.0 END) AS refund
             FROM suborder so
             LEFT JOIN productskucost psc
@@ -1000,3 +1011,68 @@ def get_profit_monthly(product_id: int, session: SessionDep) -> ProductProfitMon
         has_missing_sku_cost=has_missing_overall,
     )
 
+
+# GET /api/products/{id}/profit-monthly/{month}/orders
+@router.get("/{product_id}/profit-monthly/{month}/orders", response_model=MonthOrdersResponse)
+def get_monthly_orders(product_id: int, month: str, session: SessionDep) -> MonthOrdersResponse:
+    product = _get_product_or_404(product_id, session)
+    rows = session.execute(
+        text("""
+            SELECT
+                so.sub_order_id,
+                so.main_order_id,
+                strftime('%Y-%m-%d', COALESCE(so.paid_at, so.created_at)) AS date,
+                so.product_attr,
+                so.quantity,
+                so.buyer_paid,
+                CAST(so.refund_amount AS REAL) AS refund_amount,
+                COALESCE(psc.purchase_cost, 0.0) AS unit_cost,
+                so.status
+            FROM suborder so
+            LEFT JOIN productskucost psc
+                ON  psc.taobao_item_id = so.taobao_item_id
+                AND psc.sku_id         = COALESCE(so.product_attr, '')
+            WHERE so.taobao_item_id = :item_id
+              AND strftime('%Y-%m', COALESCE(so.paid_at, so.created_at)) = :month
+            ORDER BY COALESCE(so.paid_at, so.created_at) DESC
+        """),
+        {"item_id": product.taobao_item_id, "month": month},
+    ).fetchall()
+
+    orders = []
+    for r in rows:
+        quantity = int(r[4] or 0)
+        paid = float(r[5] or 0)
+        refund = float(r[6] or 0)
+        unit_cost = float(r[7] or 0)
+        status_val = r[8] or ''
+        cost_val = quantity * unit_cost if status_val in ('交易成功', '卖家已发货，等待买家确认') else 0.0
+        net_revenue = paid - refund
+        gp = net_revenue - cost_val if status_val in ('交易成功', '卖家已发货，等待买家确认') else 0.0
+        orders.append(MonthOrderDetail(
+            sub_order_id=r[0],
+            main_order_id=r[1],
+            date=r[2],
+            sku_name=r[3] or '默认',
+            quantity=quantity,
+            buyer_paid=paid,
+            refund_amount=refund,
+            unit_cost=unit_cost,
+            gross_profit=round(gp, 2),
+            status=status_val,
+        ))
+
+    sold = [o for o in orders if o.status in ('交易成功', '卖家已发货，等待买家确认')]
+    units = sum(o.quantity for o in sold)
+    revenue = sum(o.buyer_paid - o.refund_amount for o in sold)
+    cost_total = sum(o.quantity * o.unit_cost for o in sold)
+    gp_total = revenue - cost_total
+
+    return MonthOrdersResponse(
+        month=month,
+        orders=orders,
+        units_sold=units,
+        revenue=round(revenue, 2),
+        cost=round(cost_total, 2),
+        gross_profit=round(gp_total, 2),
+    )

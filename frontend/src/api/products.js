@@ -120,3 +120,9 @@ export async function fetchProductProfitMonthly(id) {
   if (!resp.ok) throw new Error((await resp.json()).detail || resp.statusText)
   return resp.json()
 }
+
+export async function fetchMonthOrders(id, month) {
+  const resp = await fetch(`${BASE}/${id}/profit-monthly/${month}/orders`)
+  if (!resp.ok) throw new Error((await resp.json()).detail || resp.statusText)
+  return resp.json()
+}

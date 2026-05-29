@@ -182,6 +182,7 @@ class ProductProfitSummary(BaseModel):
     gross_profit: float
     gross_margin_pct: Optional[float]
     has_missing_sku_cost: bool
+    cost_configured: bool
 
 
 class ProductProfitMonthly(BaseModel):
@@ -197,6 +198,28 @@ class ProductProfitMonthlyResponse(BaseModel):
     months_present: list[str]
     items: list[ProductProfitMonthly]
     has_missing_sku_cost: bool
+
+
+class MonthOrderDetail(BaseModel):
+    sub_order_id: str
+    main_order_id: str
+    date: Optional[str]
+    sku_name: Optional[str]
+    quantity: int
+    buyer_paid: float
+    refund_amount: float
+    unit_cost: float
+    gross_profit: float
+    status: str
+
+
+class MonthOrdersResponse(BaseModel):
+    month: str
+    orders: list[MonthOrderDetail]
+    units_sold: int
+    revenue: float
+    cost: float
+    gross_profit: float
 
 
 # ---------------------------------------------------------------------------
