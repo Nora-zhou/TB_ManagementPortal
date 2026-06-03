@@ -166,60 +166,6 @@ def test_get_product_not_found(client: TestClient):
 
 
 # ---------------------------------------------------------------------------
-# Alert threshold
-# ---------------------------------------------------------------------------
-
-def test_update_alert(client: TestClient):
-    _seed(client)
-    product_id = client.get("/api/products").json()["items"][0]["id"]
-    resp = client.put(f"/api/products/{product_id}/alert", json={"alert_low": 40.0, "alert_high": None})
-    assert resp.status_code == 200
-    data = resp.json()
-    assert data["id"] == product_id  # H1 — id must be present
-    assert data["alert_low"] == 40.0
-    assert data["alert_high"] is None
-
-
-def test_clear_alert(client: TestClient):
-    _seed(client)
-    product_id = client.get("/api/products").json()["items"][0]["id"]
-    client.put(f"/api/products/{product_id}/alert", json={"alert_low": 40.0, "alert_high": 100.0})
-    resp = client.put(f"/api/products/{product_id}/alert", json={"alert_low": None, "alert_high": None})
-    assert resp.status_code == 200
-    assert resp.json()["alert_low"] is None
-
-
-def test_alert_status_below_low(client: TestClient):  # H4
-    _seed(client)
-    product_id = client.get("/api/products").json()["items"][0]["id"]
-    # price is 59.9 — set alert_low above it
-    client.put(f"/api/products/{product_id}/alert", json={"alert_low": 70.0, "alert_high": None})
-    resp = client.get("/api/products")
-    matched = [i for i in resp.json()["items"] if i["id"] == product_id]
-    assert matched[0]["alert_status"] == "below_low"
-
-
-def test_alert_status_above_high(client: TestClient):  # H4
-    _seed(client)
-    product_id = client.get("/api/products").json()["items"][0]["id"]
-    # price is 59.9 — set alert_high below it
-    client.put(f"/api/products/{product_id}/alert", json={"alert_low": None, "alert_high": 30.0})
-    resp = client.get("/api/products")
-    matched = [i for i in resp.json()["items"] if i["id"] == product_id]
-    assert matched[0]["alert_status"] == "above_high"
-
-
-def test_alert_status_normal_after_clear(client: TestClient):  # H4
-    _seed(client)
-    product_id = client.get("/api/products").json()["items"][0]["id"]
-    client.put(f"/api/products/{product_id}/alert", json={"alert_low": 70.0, "alert_high": None})
-    client.put(f"/api/products/{product_id}/alert", json={"alert_low": None, "alert_high": None})
-    resp = client.get("/api/products")
-    matched = [i for i in resp.json()["items"] if i["id"] == product_id]
-    assert matched[0]["alert_status"] == "normal"
-
-
-# ---------------------------------------------------------------------------
 # Delete product
 # ---------------------------------------------------------------------------
 

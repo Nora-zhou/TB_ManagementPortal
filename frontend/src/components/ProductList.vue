@@ -45,7 +45,6 @@
           <th>当前价格</th>
           <th @click="toggleSold90dSort" style="cursor:pointer">近90天销量 {{ sold90dSortArrow }}</th>
           <th>最近更新</th>
-          <th>预警</th>
           <th @click="toggleMarginSort" style="cursor:pointer">毛利率 {{ marginSortArrow }}</th>
         </tr>
       </thead>
@@ -59,11 +58,6 @@
           <td>{{ item.current_price != null ? `¥${item.current_price.toFixed(2)}` : '暂无价格数据' }}</td>
           <td>{{ item.sold_90d ?? 0 }}</td>
           <td>{{ formatDate(item.last_updated) }}</td>
-          <td>
-            <span v-if="item.alert_status === 'below_low'" class="badge below">价格下跌预警</span>
-            <span v-else-if="item.alert_status === 'above_high'" class="badge above">价格上涨预警</span>
-            <span v-else class="badge normal">—</span>
-          </td>
           <td>
             <span v-if="item.gross_margin_pct != null" :class="marginClass(item.gross_margin_pct)">{{ item.gross_margin_pct.toFixed(1) }}%</span>
             <span v-else class="muted">—</span>
@@ -326,11 +320,6 @@ th {
 tbody tr:last-child td { border-bottom: none; }
 tr.clickable { cursor: pointer; transition: background 0.12s; }
 tr.clickable:hover { background: var(--bg-subtle); }
-
-.badge { display: inline-block; padding: 2px 8px; border-radius: 9999px; font-size: 11px; font-weight: 500; }
-.badge.below { background: #fee2e2; color: #991b1b; }
-.badge.above { background: #fef3c7; color: #92400e; }
-.badge.normal { color: var(--text-muted); }
 
 .empty { padding: 48px 0; text-align: center; color: var(--text-muted); font-size: 14px; }
 .empty a { color: var(--text); text-decoration: underline; text-underline-offset: 3px; }

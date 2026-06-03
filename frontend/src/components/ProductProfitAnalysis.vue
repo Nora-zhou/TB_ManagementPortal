@@ -290,19 +290,22 @@ onMounted(loadAll)
             </div>
 
             <!-- Month detail panel -->
+            <transition name="detail-fade">
             <div v-if="selectedMonth" class="month-detail">
               <div class="month-detail-header">
-                <span class="month-detail-title">{{ selectedMonth }} 订单明细</span>
+                <div class="month-detail-meta">
+                  <span class="month-detail-title">{{ selectedMonth }} 订单明细</span>
+                  <div v-if="monthDetail" class="month-kpis">
+                    <span class="kpi-chip">已售 <strong>{{ monthDetail.units_sold }}</strong> 件</span>
+                    <span class="kpi-chip">收入 <strong>¥{{ fmt(monthDetail.revenue) }}</strong></span>
+                    <span class="kpi-chip">成本 <strong>¥{{ fmt(monthDetail.cost) }}</strong></span>
+                    <span class="kpi-chip" :class="monthDetail.gross_profit >= 0 ? 'kpi--green' : 'kpi--red'">毛利 <strong>¥{{ fmt(monthDetail.gross_profit) }}</strong></span>
+                  </div>
+                </div>
                 <button class="month-detail-close" @click="selectedMonth = null; monthDetail = null">×</button>
               </div>
-              <div v-if="loadingDetail" class="muted">加载中…</div>
+              <div v-if="loadingDetail" class="muted detail-loading">加载中…</div>
               <template v-else-if="monthDetail">
-                <div class="month-kpis">
-                  <span>已售 <strong>{{ monthDetail.units_sold }}</strong> 件</span>
-                  <span>收入 <strong>¥{{ fmt(monthDetail.revenue) }}</strong></span>
-                  <span>成本 <strong>¥{{ fmt(monthDetail.cost) }}</strong></span>
-                  <span :class="monthDetail.gross_profit >= 0 ? 'kpi--green' : 'kpi--red'">毛利 <strong>¥{{ fmt(monthDetail.gross_profit) }}</strong></span>
-                </div>
                 <div class="detail-table-wrap">
                   <table class="detail-table">
                     <thead>
@@ -331,6 +334,7 @@ onMounted(loadAll)
                 </div>
               </template>
             </div>
+            </transition>
           </div>
         </div>
       </template>
@@ -387,36 +391,65 @@ onMounted(loadAll)
 .kpi--green  { color: var(--success) !important; }
 
 /* Monthly chart */
-.monthly-chart { display: flex; flex-direction: column; gap: 10px; }
+.monthly-chart { display: flex; flex-direction: column; gap: 12px; }
 .month-hint { font-size: 11px; color: var(--text-muted); font-weight: 400; margin-left: 8px; }
-.chart-detail-layout { display: flex; gap: 20px; align-items: flex-start; }
+.chart-detail-layout { display: flex; flex-direction: column; gap: 16px; }
 
 /* Bar chart */
-.bar-chart { display: flex; gap: 8px; align-items: flex-end; padding-bottom: 4px; overflow-x: auto; flex-shrink: 0; }
+.bar-chart { display: flex; gap: 8px; align-items: flex-end; padding-bottom: 4px; overflow-x: auto; }
 .bar-col   { display: flex; flex-direction: column; align-items: center; min-width: 56px; cursor: pointer; border-radius: 8px; padding: 4px 4px 0; transition: background .12s; }
 .bar-col:hover { background: var(--bg-subtle); }
 .bar-col--selected { background: var(--bg-subtle); outline: 2px solid var(--border); }
 .bar-value-label { font-size: 10px; color: var(--text-muted); white-space: nowrap; margin-bottom: 2px; height: 14px; }
-.bar-wrap  { height: 220px; display: flex; align-items: flex-end; }
-.bar       { width: 36px; border-radius: 8px 8px 0 0; min-height: 3px; transition: height 0.2s; }
+.bar-wrap  { height: 180px; display: flex; align-items: flex-end; }
+.bar       { width: 36px; border-radius: 6px 6px 0 0; min-height: 3px; transition: height 0.2s; }
 .bar-label { font-size: 11px; color: var(--text-muted); margin-top: 4px; white-space: nowrap; }
 
 /* Month detail panel */
-.month-detail { flex: 1; min-width: 0; border: 1px solid var(--border-subtle); border-radius: 16px; overflow: hidden; }
-.month-detail-header { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: var(--bg-subtle); border-bottom: 1px solid var(--border-subtle); }
-.month-detail-title { font-size: 13.5px; font-weight: 500; color: var(--text); }
-.month-detail-close { background: none; border: none; cursor: pointer; font-size: 16px; color: var(--text-muted); padding: 0 4px; line-height: 1; }
-.month-kpis { display: flex; gap: 16px; padding: 8px 14px; font-size: 12.5px; color: var(--text-muted); border-bottom: 1px solid var(--border-subtle); flex-wrap: wrap; }
-.month-kpis strong { color: var(--text); }
-.detail-table-wrap { overflow-x: auto; max-height: 260px; overflow-y: auto; }
-.detail-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
-.detail-table th { position: sticky; top: 0; background: var(--bg-subtle); text-align: left; padding: 6px 10px; color: var(--text-muted); font-weight: 500; border-bottom: 1px solid var(--border-subtle); white-space: nowrap; }
-.detail-table td { padding: 5px 10px; border-top: 1px solid var(--border-subtle); white-space: nowrap; }
+.month-detail {
+  background: var(--surface);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: rgba(0,0,0,0.06) 0px 0px 0px 1px, rgba(0,0,0,0.04) 0px 4px 8px;
+}
+.month-detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 16px 20px 14px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.month-detail-meta { display: flex; flex-direction: column; gap: 8px; }
+.month-detail-title { font-size: 14px; font-weight: 500; color: var(--text); letter-spacing: 0.14px; }
+.month-detail-close {
+  background: none; border: none; cursor: pointer;
+  font-size: 14px; color: var(--text-muted);
+  padding: 2px 6px; line-height: 1;
+  border-radius: 6px;
+  transition: background 0.12s, color 0.12s;
+  flex-shrink: 0;
+  margin-top: -2px;
+}
+.month-detail-close:hover { background: var(--bg-subtle); color: var(--text); }
+.month-kpis { display: flex; gap: 20px; flex-wrap: wrap; }
+.kpi-chip { font-size: 13px; color: var(--text-muted); letter-spacing: 0.13px; }
+.kpi-chip strong { color: var(--text); font-weight: 500; }
+.detail-loading { padding: 20px; }
+.detail-table-wrap { overflow-x: auto; max-height: 280px; overflow-y: auto; }
+.detail-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.detail-table th { position: sticky; top: 0; background: var(--surface); text-align: left; padding: 8px 16px; color: var(--text-muted); font-weight: 500; font-size: 12px; letter-spacing: 0.12px; border-bottom: 1px solid var(--border-subtle); white-space: nowrap; }
+.detail-table td { padding: 8px 16px; border-top: 1px solid var(--border-subtle); white-space: nowrap; letter-spacing: 0.13px; }
 .detail-table .num { text-align: right; font-variant-numeric: tabular-nums; }
-.detail-table .mono { font-family: ui-monospace, monospace; font-size: 11.5px; color: var(--text-muted); }
-.detail-table .sku-cell { max-width: 140px; overflow: hidden; text-overflow: ellipsis; }
-.detail-table .status-cell { font-size: 11px; color: var(--text-muted); }
+.detail-table .mono { font-family: ui-monospace, monospace; font-size: 12px; color: var(--text-muted); }
+.detail-table .sku-cell { max-width: 200px; overflow: hidden; text-overflow: ellipsis; }
+.detail-table .status-cell { font-size: 12px; color: var(--text-muted); }
 .detail-table .profit-pos { color: var(--success); font-weight: 500; }
 .detail-table .profit-neg { color: var(--danger); font-weight: 500; }
 .detail-table .row--refund td { background: #fff8f8; }
+
+/* Detail fade transition */
+.detail-fade-enter-active { transition: opacity 0.2s, transform 0.2s; }
+.detail-fade-leave-active { transition: opacity 0.15s; }
+.detail-fade-enter-from { opacity: 0; transform: translateY(-6px); }
+.detail-fade-leave-to { opacity: 0; }
 </style>

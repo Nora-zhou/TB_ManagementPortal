@@ -112,3 +112,25 @@ export async function getTopProducts(params = {}) {
   if (!resp.ok) throw new Error((await resp.json()).detail || resp.statusText)
   return resp.json()
 }
+
+/**
+ * Fetch top refund products (by count and by rate).
+ * @param {{limit?: number, start_date?: string, end_date?: string, store?: number}} params
+ */
+export async function getTopRefundProducts(params = {}) {
+  const query = new URLSearchParams()
+  if (params.limit) query.set('limit', params.limit)
+  if (params.start_date) query.set('start_date', params.start_date)
+  if (params.end_date) query.set('end_date', params.end_date)
+  if (params.store != null) query.set('store', params.store)
+  const resp = await fetch(`${BASE}/stats/top-refund-products?${query}`)
+  if (!resp.ok) {
+    const data = await resp.json().catch(() => ({}))
+    const detail = data.detail
+    const msg = Array.isArray(detail)
+      ? detail.map(e => e.msg).join('; ')
+      : (detail || resp.statusText)
+    throw new Error(msg)
+  }
+  return resp.json()
+}

@@ -19,8 +19,6 @@ class Product(SQLModel, table=True):
     name: str = Field(max_length=500)
     url: Optional[str] = Field(default=None, max_length=1000)
     current_price: Optional[float] = None
-    alert_low: Optional[float] = None
-    alert_high: Optional[float] = None
     last_updated: Optional[datetime] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     store: int = Field(default=1)  # 1=店铺1, 2=店铺2

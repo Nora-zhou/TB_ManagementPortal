@@ -41,10 +41,7 @@ class ProductRead(BaseModel):
     name: str
     url: Optional[str]
     current_price: Optional[float]
-    alert_low: Optional[float]
-    alert_high: Optional[float]
     last_updated: Optional[datetime]
-    alert_status: str  # "normal" | "below_low" | "above_high"
     snapshot_count: Optional[int] = None
     sold_90d: int = 0
     gross_margin_pct: Optional[float] = None
@@ -58,17 +55,6 @@ class ProductListResponse(BaseModel):
     page: int
     page_size: int
     items: list[ProductRead]
-
-
-class AlertUpdate(BaseModel):
-    alert_low: Optional[float] = None
-    alert_high: Optional[float] = None
-
-
-class AlertResponse(BaseModel):
-    id: int
-    alert_low: Optional[float]
-    alert_high: Optional[float]
 
 
 class TaobaoImportRequest(BaseModel):
@@ -265,6 +251,26 @@ class MonthOrdersResponse(BaseModel):
     revenue: float
     cost: float
     gross_profit: float
+
+
+# ---------------------------------------------------------------------------
+# Refund top products schemas (order analytics)
+# ---------------------------------------------------------------------------
+
+class RefundTopItem(BaseModel):
+    rank: int
+    taobao_item_id: str
+    product_title: str
+    refund_count: int
+    total_orders: int
+    refund_amount: float
+    total_revenue: float
+    refund_rate: float   # percentage 0.0–100.0
+
+
+class TopRefundProductsResponse(BaseModel):
+    by_count: list[RefundTopItem]
+    by_rate: list[RefundTopItem]
 
 
 # ---------------------------------------------------------------------------

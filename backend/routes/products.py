@@ -13,8 +13,6 @@ from sqlalchemy import text, bindparam
 from database import get_session
 from models import Product, PriceSnapshot, SubOrder, ProductSKUCost
 from schemas import (
-    AlertResponse,
-    AlertUpdate,
     GoodsDirImportResponse,
     ImportResponse,
     OrderPricePoint,
@@ -54,16 +52,6 @@ def _validate_url(url: Optional[str]) -> Optional[str]:
     return url
 
 
-def _compute_alert_status(product: Product) -> str:
-    if product.current_price is None:
-        return "normal"
-    if product.alert_low is not None and product.current_price < product.alert_low:
-        return "below_low"
-    if product.alert_high is not None and product.current_price > product.alert_high:
-        return "above_high"
-    return "normal"
-
-
 def _product_to_read(
     product: Product,
     session: Session,
@@ -83,10 +71,7 @@ def _product_to_read(
         name=product.name,
         url=product.url,
         current_price=product.current_price,
-        alert_low=product.alert_low,
-        alert_high=product.alert_high,
         last_updated=product.last_updated,
-        alert_status=_compute_alert_status(product),
         snapshot_count=snapshot_count,
         sold_90d=sold_90d,
         gross_margin_pct=gross_margin_pct,
@@ -654,32 +639,17 @@ def list_products(
 # ---------------------------------------------------------------------------
 
 @router.get("/{product_id}", response_model=ProductRead)
-def get_product(product_id: int, session: SessionDep) -> ProductRead:
-    product = session.get(Product, product_id)
+def get_product(product_id: str, session: SessionDep) -> ProductRead:
+    product = None
+    # Try numeric DB primary key first
+    if product_id.isdigit():
+        product = session.get(Product, int(product_id))
+    # Fall back to taobao_item_id lookup
+    if not product:
+        product = session.exec(select(Product).where(Product.taobao_item_id == product_id)).first()
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
     return _product_to_read(product, session, include_snapshot_count=True)
-
-
-# ---------------------------------------------------------------------------
-# PUT /api/products/{id}/alert
-# ---------------------------------------------------------------------------
-
-@router.put("/{product_id}/alert", response_model=AlertResponse)
-def update_alert(
-    product_id: int,
-    payload: AlertUpdate,
-    session: SessionDep,
-) -> AlertResponse:
-    product = session.get(Product, product_id)
-    if not product:
-        raise HTTPException(status_code=404, detail="Product not found")
-    product.alert_low = payload.alert_low
-    product.alert_high = payload.alert_high
-    session.add(product)
-    session.commit()
-    session.refresh(product)
-    return AlertResponse(id=product.id, alert_low=product.alert_low, alert_high=product.alert_high)
 
 
 # ---------------------------------------------------------------------------

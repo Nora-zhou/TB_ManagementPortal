@@ -49,16 +49,6 @@ export async function importTaobao(payload) {
   return resp.json()
 }
 
-export async function updateAlert(id, payload) {
-  const resp = await fetch(`${BASE}/${id}/alert`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-  })
-  if (!resp.ok) throw new Error((await resp.json()).detail || resp.statusText)
-  return resp.json()
-}
-
 export async function deleteProduct(id) {
   const resp = await fetch(`${BASE}/${id}`, { method: 'DELETE' })
   if (!resp.ok) throw new Error((await resp.json()).detail || resp.statusText)

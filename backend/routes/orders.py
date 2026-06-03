@@ -19,10 +19,12 @@ from schemas import (
     ImportResult,
     OrderListResponse,
     OrderRead,
+    RefundTopItem,
     StatusDistItem,
     SummaryStats,
     TopProductItem,
     TopProductsResponse,
+    TopRefundProductsResponse,
     TrendResponse,
 )
 
@@ -576,3 +578,88 @@ def top_products(
     ]
 
     return TopProductsResponse(sort_by=sort_by, items=items)
+
+
+# ---------------------------------------------------------------------------
+# GET /api/orders/stats/top-refund-products
+# ---------------------------------------------------------------------------
+
+@router.get("/stats/top-refund-products", response_model=TopRefundProductsResponse)
+def top_refund_products(
+    session: Session = Depends(get_session),
+    limit: int = Query(default=10, ge=1, le=500),
+    start_date: Optional[str] = Query(default=None),
+    end_date: Optional[str] = Query(default=None),
+    store: Optional[int] = Query(default=None),
+):
+    from datetime import timedelta
+    from sqlalchemy import text
+
+    where_parts: list[str] = []
+    params: dict = {}
+
+    if start_date:
+        try:
+            where_parts.append("created_at >= :start_dt")
+            params["start_dt"] = datetime.strptime(start_date, "%Y-%m-%d").strftime("%Y-%m-%d %H:%M:%S")
+        except ValueError:
+            pass
+    if end_date:
+        try:
+            dt = datetime.strptime(end_date, "%Y-%m-%d") + timedelta(days=1)
+            where_parts.append("created_at < :end_dt")
+            params["end_dt"] = dt.strftime("%Y-%m-%d %H:%M:%S")
+        except ValueError:
+            pass
+    if store is not None:
+        where_parts.append("store = :store")
+        params["store"] = store
+
+    where_sql = ("WHERE " + " AND ".join(where_parts)) if where_parts else ""
+
+    sql = text(f"""
+        SELECT
+            taobao_item_id,
+            product_title,
+            -- "实付订单"：buyer_paid > 0，不依赖状态（退款后状态可能变为"交易关闭"）
+            SUM(CASE WHEN buyer_paid > 0 THEN 1 ELSE 0 END) AS total_paid_orders,
+            SUM(CASE WHEN buyer_paid > 0 AND CAST(refund_amount AS REAL) > 0 THEN 1 ELSE 0 END) AS refund_count,
+            COALESCE(SUM(CASE WHEN buyer_paid > 0 AND CAST(refund_amount AS REAL) > 0
+                             THEN CAST(refund_amount AS REAL) ELSE 0 END), 0) AS refund_total,
+            COALESCE(SUM(buyer_paid), 0) AS revenue
+        FROM suborder
+        {where_sql}
+        GROUP BY taobao_item_id, product_title
+        HAVING SUM(CASE WHEN buyer_paid > 0 AND CAST(refund_amount AS REAL) > 0 THEN 1 ELSE 0 END) > 0
+    """)
+    rows = session.execute(sql, params).fetchall()
+
+    def make_item(rank: int, r) -> RefundTopItem:
+        paid = int(r.total_paid_orders or 0)
+        refund_cnt = int(r.refund_count or 0)
+        refund = float(r.refund_total or 0)
+        # Count-based refund rate: refunded orders / paid orders
+        rate = round(refund_cnt / paid * 100, 1) if paid > 0 else 0.0
+        return RefundTopItem(
+            rank=rank,
+            taobao_item_id=r.taobao_item_id or "",
+            product_title=r.product_title or "未知",
+            refund_count=refund_cnt,
+            total_orders=paid,
+            refund_amount=round(refund, 2),
+            total_revenue=round(float(r.revenue or 0), 2),
+            refund_rate=rate,
+        )
+
+    by_count_sorted = sorted(rows, key=lambda r: int(r.refund_count or 0), reverse=True)[:limit]
+    by_rate_sorted = sorted(
+        rows,
+        key=lambda r: int(r.refund_count or 0) / int(r.total_paid_orders) * 100
+            if int(r.total_paid_orders or 0) > 0 else 0.0,
+        reverse=True,
+    )[:limit]
+
+    return TopRefundProductsResponse(
+        by_count=[make_item(i + 1, r) for i, r in enumerate(by_count_sorted)],
+        by_rate=[make_item(i + 1, r) for i, r in enumerate(by_rate_sorted)],
+    )

@@ -56,7 +56,7 @@ const rangeOptions = [
 ]
 
 const selectedDays = ref(String(props.days))
-const chartType = ref('scatter')   // T018: 'scatter' | 'line'
+const chartType = ref('line')   // T018: 'scatter' | 'line'
 const loading = ref(false)
 const errorMsg = ref(null)
 const seriesData = ref(null)

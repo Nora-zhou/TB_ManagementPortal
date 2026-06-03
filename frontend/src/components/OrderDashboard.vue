@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, watch, computed } from 'vue'
 import { use } from 'echarts/core'
 import { CanvasRenderer } from 'echarts/renderers'
 import { LineChart } from 'echarts/charts'
@@ -8,7 +8,7 @@ import {
   TitleComponent, ToolboxComponent,
 } from 'echarts/components'
 import VChart from 'vue-echarts'
-import { getOrderSummary, getOrderTrend, getTopProducts } from '../api/orders'
+import { getOrderSummary, getOrderTrend, getTopProducts, getTopRefundProducts } from '../api/orders'
 
 use([CanvasRenderer, LineChart, GridComponent, TooltipComponent, LegendComponent, TitleComponent, ToolboxComponent])
 
@@ -160,10 +160,52 @@ async function loadTop() {
   }
 }
 
+// ----------------------------------------------------------------
+// Refund top products
+// ----------------------------------------------------------------
+const refundByCount = ref([])
+const refundByRate = ref([])
+const refundTopError = ref(null)
+const refundTopEmpty = ref(false)
+
+// Modal
+const refundModal = ref({ open: false, type: 'count', page: 1, pageSize: 20 })
+const refundModalSource = computed(() =>
+  refundModal.value.type === 'count' ? refundByCount.value : refundByRate.value
+)
+const refundModalTotal = computed(() => refundModalSource.value.length)
+const refundModalTotalPages = computed(() =>
+  Math.max(1, Math.ceil(refundModalTotal.value / refundModal.value.pageSize))
+)
+const refundModalPageItems = computed(() => {
+  const start = (refundModal.value.page - 1) * refundModal.value.pageSize
+  return refundModalSource.value.slice(start, start + refundModal.value.pageSize)
+})
+function openRefundModal(type) {
+  refundModal.value = { open: true, type, page: 1, pageSize: 20 }
+}
+function closeRefundModal() {
+  refundModal.value.open = false
+}
+
+async function loadRefundTop() {
+  refundTopError.value = null
+  refundTopEmpty.value = false
+  try {
+    const res = await getTopRefundProducts({ limit: 500, ...dateParams(), ...storeParams() })
+    refundByCount.value = res.by_count
+    refundByRate.value = res.by_rate
+    refundTopEmpty.value = res.by_count.length === 0 && res.by_rate.length === 0
+  } catch (e) {
+    refundTopError.value = e.message
+  }
+}
+
 function loadAll() {
   loadSummary()
   loadTrend()
   loadTop()
+  loadRefundTop()
 }
 
 watch(trendGranularity, loadTrend)
@@ -313,7 +355,7 @@ function pct(n, d) {
         <tbody>
           <tr v-for="item in topItems" :key="item.rank">
             <td class="rank">{{ item.rank }}</td>
-            <td class="item-id">{{ item.taobao_item_id }}</td>
+            <td class="item-id"><router-link :to="'/products/' + item.taobao_item_id">{{ item.taobao_item_id }}</router-link></td>
             <td :title="item.product_title">{{ item.product_title.slice(0, 30) }}{{ item.product_title.length > 30 ? '…' : '' }}</td>
             <td class="num">{{ item.order_count }}</td>
             <td class="num">¥{{ item.total_revenue.toFixed(2) }}</td>
@@ -323,6 +365,110 @@ function pct(n, d) {
       <div v-else-if="topEmpty" class="chart-placeholder empty">所选时间范围内暂无订单数据</div>
       <div v-else class="chart-placeholder">暂无数据</div>
     </div>
+
+    <!-- Refund top products -->
+    <div class="section-row">
+      <!-- By refund count -->
+      <div class="section half">
+        <div class="section-header">
+          <h3>退款数量 Top 10</h3>
+          <button v-if="refundByCount.length > 10" class="btn-more" @click="openRefundModal('count')">更多</button>
+        </div>
+        <div v-if="refundTopError" class="error-msg">⚠ {{ refundTopError }}</div>
+        <div v-else-if="refundTopEmpty" class="chart-placeholder empty">所选时间范围内暂无退款数据</div>
+        <table v-else-if="refundByCount.length" class="top-table">
+          <thead>
+            <tr>
+              <th>#</th><th>商品标题</th><th>退款次数</th><th>实付订单数</th><th>退款额</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="item in refundByCount.slice(0, 10)" :key="'c' + item.rank">
+              <td class="rank">{{ item.rank }}</td>
+              <td :title="item.product_title">{{ item.product_title.slice(0, 32) }}{{ item.product_title.length > 32 ? '…' : '' }}</td>
+              <td class="num red">{{ item.refund_count }}</td>
+              <td class="num">{{ item.total_orders }}</td>
+              <td class="num red">¥{{ item.refund_amount.toFixed(2) }}</td>
+            </tr>
+          </tbody>
+        </table>
+        <div v-else class="chart-placeholder">加载中…</div>
+      </div>
+
+      <!-- By refund rate -->
+      <div class="section half">
+        <div class="section-header">
+          <h3>退款率 Top 10</h3>
+          <button v-if="refundByRate.length > 10" class="btn-more" @click="openRefundModal('rate')">更多</button>
+        </div>
+        <div v-if="refundTopError" class="error-msg">⚠ {{ refundTopError }}</div>
+        <div v-else-if="refundTopEmpty" class="chart-placeholder empty">所选时间范围内暂无退款数据</div>
+        <table v-else-if="refundByRate.length" class="top-table">
+          <thead>
+            <tr>
+              <th>#</th><th>商品标题</th><th>退款率</th><th>退款次数</th><th>退款额</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="item in refundByRate.slice(0, 10)" :key="'r' + item.rank">
+              <td class="rank">{{ item.rank }}</td>
+              <td :title="item.product_title">{{ item.product_title.slice(0, 32) }}{{ item.product_title.length > 32 ? '…' : '' }}</td>
+              <td class="num red">{{ item.refund_rate.toFixed(1) }}%</td>
+              <td class="num">{{ item.refund_count }}</td>
+              <td class="num red">¥{{ item.refund_amount.toFixed(2) }}</td>
+            </tr>
+          </tbody>
+        </table>
+        <div v-else class="chart-placeholder">加载中…</div>
+      </div>
+    </div>
+
+    <!-- Refund modal -->
+    <Teleport to="body">
+      <div v-if="refundModal.open" class="modal-backdrop" @click.self="closeRefundModal">
+        <div class="modal-card">
+          <div class="modal-header">
+            <h3>{{ refundModal.type === 'count' ? '退款数量' : '退款率' }} — 全部商品（共 {{ refundModalTotal }} 条）</h3>
+            <button class="modal-close" @click="closeRefundModal">✕</button>
+          </div>
+          <div class="modal-body">
+            <table class="top-table">
+              <thead>
+                <tr v-if="refundModal.type === 'count'">
+                  <th>#</th><th>商品标题</th><th>退款次数</th><th>实付订单数</th><th>退款额</th>
+                </tr>
+                <tr v-else>
+                  <th>#</th><th>商品标题</th><th>退款率</th><th>退款次数</th><th>退款额</th>
+                </tr>
+              </thead>
+              <tbody v-if="refundModal.type === 'count'">
+                <tr v-for="item in refundModalPageItems" :key="item.rank">
+                  <td class="rank">{{ item.rank }}</td>
+                  <td :title="item.product_title">{{ item.product_title.slice(0, 40) }}{{ item.product_title.length > 40 ? '…' : '' }}</td>
+                  <td class="num red">{{ item.refund_count }}</td>
+                  <td class="num">{{ item.total_orders }}</td>
+                  <td class="num red">¥{{ item.refund_amount.toFixed(2) }}</td>
+                </tr>
+              </tbody>
+              <tbody v-else>
+                <tr v-for="item in refundModalPageItems" :key="item.rank">
+                  <td class="rank">{{ item.rank }}</td>
+                  <td :title="item.product_title">{{ item.product_title.slice(0, 40) }}{{ item.product_title.length > 40 ? '…' : '' }}</td>
+                  <td class="num red">{{ item.refund_rate.toFixed(1) }}%</td>
+                  <td class="num">{{ item.refund_count }}</td>
+                  <td class="num red">¥{{ item.refund_amount.toFixed(2) }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="modal-footer">
+            <button class="modal-page-btn" :disabled="refundModal.page <= 1" @click="refundModal.page--">上一页</button>
+            <span class="modal-page-info">第 {{ refundModal.page }} / {{ refundModalTotalPages }} 页</span>
+            <button class="modal-page-btn" :disabled="refundModal.page >= refundModalTotalPages" @click="refundModal.page++">下一页</button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>
 
@@ -456,7 +602,7 @@ h3 { margin: 0; font-size: 14px; font-weight: 500; letter-spacing: 0.14px; color
   box-shadow: var(--shadow-outline), var(--shadow-soft);
 }
 .section-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-.half { margin-bottom: 0; }
+.half { margin-bottom: 0; padding: 14px 14px; }
 @media (max-width: 768px) { .section-row { grid-template-columns: 1fr; } }
 
 .section-header {
@@ -504,6 +650,70 @@ h3 { margin: 0; font-size: 14px; font-weight: 500; letter-spacing: 0.14px; color
 }
 .top-table tbody tr:last-child td { border-bottom: none; }
 .rank { width: 2rem; text-align: center; color: var(--text-muted); font-weight: 500; font-size: 12px; }
-.item-id { color: var(--text-muted); font-size: 12px; font-family: monospace; white-space: nowrap; }
+.item-id { font-size: 12px; font-family: monospace; white-space: nowrap; }
+.item-id a { color: var(--accent, #3b82f6); text-decoration: none; }
+.item-id a:hover { text-decoration: underline; }
 .num { text-align: right; font-variant-numeric: tabular-nums; color: var(--text); }
+.num.red { color: var(--danger); }
+
+.btn-more {
+  padding: 3px 12px;
+  font-size: 12px; font-weight: 500;
+  border: 1px solid var(--border);
+  border-radius: 9999px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.btn-more:hover { color: var(--text); background: var(--bg-subtle); }
+
+/* Modal */
+:global(.modal-backdrop) {
+  position: fixed; inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 1000;
+}
+:global(.modal-card) {
+  background: var(--surface, #fff);
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+  width: min(820px, 92vw);
+  max-height: 80vh;
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
+:global(.modal-header) {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border-subtle, #eee);
+}
+:global(.modal-header h3) {
+  margin: 0; font-size: 14px; font-weight: 500; color: var(--text, #111);
+}
+:global(.modal-close) {
+  background: none; border: none; cursor: pointer;
+  font-size: 16px; color: var(--text-muted, #888);
+  line-height: 1; padding: 2px 6px; border-radius: 6px;
+  transition: background 0.15s;
+}
+:global(.modal-close:hover) { background: var(--bg-subtle, #f5f5f5); }
+:global(.modal-body) {
+  flex: 1; overflow-y: auto; padding: 0 20px;
+}
+:global(.modal-footer) {
+  display: flex; align-items: center; justify-content: center; gap: 16px;
+  padding: 12px 20px;
+  border-top: 1px solid var(--border-subtle, #eee);
+}
+:global(.modal-page-btn) {
+  padding: 5px 16px; font-size: 13px; font-weight: 500;
+  border: 1px solid var(--border, #ddd); border-radius: 9999px;
+  background: transparent; color: var(--text, #111);
+  cursor: pointer; transition: all 0.15s;
+}
+:global(.modal-page-btn:disabled) { opacity: 0.35; cursor: not-allowed; }
+:global(.modal-page-btn:not(:disabled):hover) { background: var(--bg-subtle, #f5f5f5); }
+:global(.modal-page-info) { font-size: 13px; color: var(--text-muted, #888); }
 </style>
