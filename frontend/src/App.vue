@@ -14,9 +14,10 @@ const route = useRoute()
 
         <nav class="nav-links">
           <router-link to="/" class="nav-link" active-class="nav-link--active" exact-active-class="nav-link--active">首页</router-link>
-          <router-link to="/products" class="nav-link" active-class="nav-link--active">商品列表</router-link>
           <router-link to="/orders/dashboard" class="nav-link" active-class="nav-link--active">订单分析</router-link>
+          <router-link to="/products" class="nav-link" active-class="nav-link--active">商品列表</router-link>
           <router-link to="/orders" class="nav-link" active-class="nav-link--active" exact-active-class="nav-link--active">订单列表</router-link>
+          <router-link to="/suppliers" class="nav-link" active-class="nav-link--active">供应商管理</router-link>
           <div class="nav-dropdown">
             <span class="nav-link nav-link--dropdown" :class="{ 'nav-link--active': route.path === '/import' || route.path.startsWith('/products/sku') }">
               基础配置 <span class="dropdown-arrow">▾</span>
@@ -26,7 +27,6 @@ const route = useRoute()
               <router-link to="/products/sku-costs" class="dropdown-item" active-class="dropdown-item--active">SKU 成本配置</router-link>
             </div>
           </div>
-          <router-link to="/suppliers" class="nav-link" active-class="nav-link--active">供应商管理</router-link>
         </nav>
       </div>
     </header>

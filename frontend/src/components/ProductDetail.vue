@@ -79,8 +79,9 @@ onMounted(load)
 }
 .back-btn:hover { color: var(--text); }
 h2 {
-  margin: 0 0 4px;
-  font-size: 32px; font-weight: 300; letter-spacing: normal; line-height: 1.13; color: var(--text);
+  margin: 0 0 20px;
+  font-size: 24px; font-weight: 500; letter-spacing: 0.1px; line-height: 1.4; color: var(--text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 h3 {
   margin: 32px 0 12px;
