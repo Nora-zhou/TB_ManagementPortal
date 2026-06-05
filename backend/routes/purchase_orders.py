@@ -23,6 +23,7 @@ from schemas import (
     TopSupplierItem,
     SupplierMonthlyItem,
     SupplierDashboardResponse,
+    SupplierReturnRateItem,
     SupplierEvaluationItem,
     SupplierEvaluationResponse,
     ReturnRateGoodsItem,
@@ -488,10 +489,56 @@ def get_supplier_dashboard(
             monthly_amounts=monthly_amounts,
         ))
 
+    # Query 3: Per-supplier return rate (top 15 by return rate, min 3 orders)
+    rr_filters = [
+        PurchaseOrder.status != "等待买家付款",
+        PurchaseOrder.created_at.isnot(None),
+    ]
+    if store is not None:
+        rr_filters.append(PurchaseOrder.store == store)
+    if start_month:
+        rr_filters.append(func.strftime("%Y-%m", PurchaseOrder.created_at) >= start_month)
+    if end_month:
+        rr_filters.append(func.strftime("%Y-%m", PurchaseOrder.created_at) <= end_month)
+
+    rr_stmt = (
+        select(
+            PurchaseOrder.seller_name,
+            func.count(PurchaseOrder.id).label("total_count"),
+            func.sum(
+                sql_case(
+                    (
+                        (PurchaseOrder.status == "退款中")
+                        | ((PurchaseOrder.status == "交易关闭") & (PurchaseOrder.paid_amount > 0)),
+                        1,
+                    ),
+                    else_=0,
+                )
+            ).label("return_count"),
+        )
+        .where(*rr_filters)
+        .group_by(PurchaseOrder.seller_name)
+    )
+    rr_results = session.exec(rr_stmt).all()
+    return_rate_suppliers = sorted(
+        [
+            SupplierReturnRateItem(
+                seller_name=r.seller_name,
+                return_rate=round(int(r.return_count or 0) / int(r.total_count) * 100, 2),
+                return_count=int(r.return_count or 0),
+                total_count=int(r.total_count),
+            )
+            for r in rr_results
+            if int(r.total_count or 0) >= 3 and int(r.return_count or 0) > 0
+        ],
+        key=lambda x: -x.return_rate,
+    )[:15]
+
     return SupplierDashboardResponse(
         top_suppliers=top_suppliers,
         months=all_months,
         monthly_data=monthly_data,
+        return_rate_suppliers=return_rate_suppliers,
     )
 
 
@@ -937,6 +984,77 @@ def get_refund_orders(
             )
         ),
     ]
+    if start_month:
+        conditions.append(
+            func.strftime("%Y-%m", PurchaseOrder.created_at) >= start_month
+        )
+    if end_month:
+        conditions.append(
+            func.strftime("%Y-%m", PurchaseOrder.created_at) <= end_month
+        )
+    stmt = (
+        select(PurchaseOrder)
+        .where(*conditions)
+        .order_by(PurchaseOrder.created_at.desc())
+    )
+    rows = session.exec(stmt).all()
+    return [
+        RefundOrderItem(
+            order_id=r.order_id,
+            goods_title=r.goods_title,
+            status=r.status,
+            paid_amount=r.paid_amount,
+            quantity=r.quantity,
+            unit_price=r.unit_price,
+            created_at=r.created_at.strftime("%Y-%m-%d") if r.created_at else None,
+        )
+        for r in rows
+    ]
+
+
+@router.get("/refund-orders-by-seller", response_model=list[RefundOrderItem])
+def get_refund_orders_by_seller(
+    seller_name: str,
+    start_month: Optional[str] = Query(default=None, pattern=r"^\d{4}-\d{2}$"),
+    end_month: Optional[str] = Query(default=None, pattern=r"^\d{4}-\d{2}$"),
+    store: Optional[int] = Query(default=None),
+    session: Session = Depends(get_session),
+):
+    """Return all orders (交易成功 + refund) for a specific seller across all goods."""
+    conditions = [
+        PurchaseOrder.seller_name == seller_name,
+        PurchaseOrder.status != "\u7b49\u5f85\u4e70\u5bb6\u4ed8\u6b3e",
+    ]
+    if store is not None:
+        conditions.append(PurchaseOrder.store == store)
+    if start_month:
+        conditions.append(
+            func.strftime("%Y-%m", PurchaseOrder.created_at) >= start_month
+        )
+    if end_month:
+        conditions.append(
+            func.strftime("%Y-%m", PurchaseOrder.created_at) <= end_month
+        )
+    stmt = (
+        select(PurchaseOrder)
+        .where(*conditions)
+        .order_by(PurchaseOrder.created_at.desc())
+    )
+    rows = session.exec(stmt).all()
+    return [
+        RefundOrderItem(
+            order_id=r.order_id,
+            goods_title=r.goods_title,
+            status=r.status,
+            paid_amount=r.paid_amount,
+            quantity=r.quantity,
+            unit_price=r.unit_price,
+            created_at=r.created_at.strftime("%Y-%m-%d") if r.created_at else None,
+        )
+        for r in rows
+    ]
+    if store is not None:
+        conditions.append(PurchaseOrder.store == store)
     if start_month:
         conditions.append(
             func.strftime("%Y-%m", PurchaseOrder.created_at) >= start_month

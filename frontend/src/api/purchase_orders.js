@@ -113,3 +113,13 @@ export async function fetchRefundOrders(sellerName, goodsTitle, { startMonth, en
   if (!res.ok) throw await res.json()
   return res.json()
 }
+
+export async function fetchRefundOrdersBySeller(sellerName, { startMonth, endMonth, store } = {}) {
+  const p = new URLSearchParams({ seller_name: sellerName })
+  if (startMonth) p.append('start_month', startMonth)
+  if (endMonth) p.append('end_month', endMonth)
+  if (store != null) p.append('store', String(store))
+  const res = await fetch(`${BASE}/refund-orders-by-seller?${p}`)
+  if (!res.ok) throw await res.json()
+  return res.json()
+}

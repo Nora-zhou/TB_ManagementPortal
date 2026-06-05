@@ -104,10 +104,18 @@ class SupplierMonthlyItem(BaseModel):
     monthly_amounts: dict[str, float]
 
 
+class SupplierReturnRateItem(BaseModel):
+    seller_name: str
+    return_rate: float   # percentage 0–100
+    return_count: int
+    total_count: int
+
+
 class SupplierDashboardResponse(BaseModel):
     top_suppliers: list[TopSupplierItem]
     months: list[str]
     monthly_data: list[SupplierMonthlyItem]
+    return_rate_suppliers: list[SupplierReturnRateItem] = []
 
 
 # ---------------------------------------------------------------------------

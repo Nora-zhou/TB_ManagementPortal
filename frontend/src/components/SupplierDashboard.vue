@@ -12,11 +12,38 @@ import {
   LegendScrollComponent,
 } from 'echarts/components'
 import VChart from 'vue-echarts'
-import { fetchAvailableMonths, fetchSupplierDashboard } from '../api/purchase_orders.js'
+import { fetchAvailableMonths, fetchSupplierDashboard, fetchRefundOrdersBySeller } from '../api/purchase_orders.js'
 
 use([CanvasRenderer, BarChart, LineChart, GridComponent, TooltipComponent, LegendComponent, TitleComponent, LegendScrollComponent])
 
 const router = useRouter()
+
+// ── Return rate expand state ──────────────────────────────────────────────
+const expandedSeller = ref(null)
+const expandedOrders = ref([])
+const expandLoading = ref(false)
+
+async function toggleSellerExpand(sellerName) {
+  if (expandedSeller.value === sellerName) {
+    expandedSeller.value = null
+    expandedOrders.value = []
+    return
+  }
+  expandedSeller.value = sellerName
+  expandedOrders.value = []
+  expandLoading.value = true
+  try {
+    expandedOrders.value = await fetchRefundOrdersBySeller(sellerName, {
+      startMonth: startMonth.value || undefined,
+      endMonth: endMonth.value || undefined,
+      store: storeFilter.value ?? undefined,
+    })
+  } catch {
+    expandedOrders.value = []
+  } finally {
+    expandLoading.value = false
+  }
+}
 
 const availableMonths = ref([])
 const startMonth = ref('')
@@ -298,6 +325,62 @@ onMounted(async () => {
       <div class="chart-block">
         <v-chart :option="chart2Option" autoresize style="height: 440px; width: 100%;" />
       </div>
+
+      <!-- Return rate top 15 -->
+      <div class="chart-block" v-if="dashData.return_rate_suppliers && dashData.return_rate_suppliers.length">
+        <h3 class="section-title">退款率 Top {{ dashData.return_rate_suppliers.length }}（退款单数 / 总单数，至少 3 单）</h3>
+        <table class="rr-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>供应商名称</th>
+              <th>退款率</th>
+              <th>退款单数 / 总单数</th>
+            </tr>
+          </thead>
+          <tbody>
+            <template v-for="(s, i) in dashData.return_rate_suppliers" :key="s.seller_name">
+              <tr class="rr-row" @click="toggleSellerExpand(s.seller_name)">
+                <td class="rr-rank">{{ i + 1 }}</td>
+                <td class="rr-name">
+                  <span class="rr-toggle">{{ expandedSeller === s.seller_name ? '▾' : '▸' }}</span>
+                  {{ s.seller_name }}
+                </td>
+                <td class="rr-rate" :class="s.return_rate >= 20 ? 'rr-high' : s.return_rate >= 10 ? 'rr-mid' : ''">
+                  {{ s.return_rate.toFixed(1) }}%
+                </td>
+                <td class="rr-counts">{{ s.return_count }} / {{ s.total_count }}</td>
+              </tr>
+              <tr v-if="expandedSeller === s.seller_name" class="rr-detail-row">
+                <td colspan="4" class="rr-detail-cell">
+                  <div v-if="expandLoading" class="rr-detail-loading">加载中…</div>
+                  <div v-else-if="expandedOrders.length === 0" class="rr-detail-empty">暂无退款订单</div>
+                  <table v-else class="rr-detail-table">
+                    <thead>
+                      <tr>
+                        <th>订单编号</th>
+                        <th>商品名称</th>
+                        <th>状态</th>
+                        <th>金额（元）</th>
+                        <th>下单日期</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr v-for="o in expandedOrders" :key="o.order_id">
+                        <td class="rr-d-id">{{ o.order_id }}</td>
+                        <td class="rr-d-goods">{{ o.goods_title || '-' }}</td>
+                        <td class="rr-d-status" :class="o.status === '交易成功' ? 'rr-d-success' : 'rr-d-refund'">{{ o.status }}</td>
+                        <td class="rr-d-amount">¥{{ Number(o.paid_amount).toFixed(2) }}</td>
+                        <td class="rr-d-date">{{ o.created_at || '-' }}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </td>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+      </div>
     </template>
   </div>
 </template>
@@ -401,6 +484,53 @@ onMounted(async () => {
   padding: 20px 24px;
   box-shadow: var(--shadow-outline), var(--shadow-soft);
 }
+
+.section-title {
+  font-size: 14px;
+  font-weight: 500;
+  text-align: center;
+  margin: 0 0 16px;
+  color: var(--text);
+}
+.rr-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.rr-table th {
+  text-align: left;
+  padding: 8px 12px;
+  border-bottom: 2px solid var(--border);
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+.rr-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border-subtle);
+  color: var(--text);
+}
+.rr-rank { color: var(--text-secondary); width: 36px; }
+.rr-name { max-width: 320px; }
+.rr-rate { font-weight: 600; }
+.rr-high { color: #ef4444; }
+.rr-mid  { color: #f97316; }
+.rr-counts { color: var(--text-secondary); }
+.rr-row { cursor: pointer; transition: background 0.12s; }
+.rr-row:hover { background: var(--bg-subtle); }
+.rr-toggle { display: inline-block; width: 14px; font-size: 11px; color: var(--text-muted); }
+.rr-detail-row td { padding: 0; }
+.rr-detail-cell { padding: 0 12px 12px 28px !important; background: var(--bg-subtle); }
+.rr-detail-loading, .rr-detail-empty { padding: 10px 0; font-size: 13px; color: var(--text-secondary); }
+.rr-detail-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 6px; }
+.rr-detail-table th { padding: 6px 10px; border-bottom: 1px solid var(--border); color: var(--text-secondary); font-weight: 500; text-align: left; }
+.rr-detail-table td { padding: 7px 10px; border-bottom: 1px solid var(--border-subtle); color: var(--text); }
+.rr-d-id { color: var(--text-muted); font-size: 11px; max-width: 180px; word-break: break-all; }
+.rr-d-goods { max-width: 280px; }
+.rr-d-status { white-space: nowrap; }
+.rr-d-success { color: #16a34a; font-weight: 500; }
+.rr-d-refund  { color: #ef4444; font-weight: 500; }
+.rr-d-amount { font-weight: 500; white-space: nowrap; }
+.rr-d-date { white-space: nowrap; color: var(--text-secondary); }
 
 .chart3-filter {
   display: flex;
