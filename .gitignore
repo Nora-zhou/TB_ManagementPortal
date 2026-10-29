@@ -24,6 +24,7 @@ env/
 browser_data/
 rpa_screenshots/
 data/raw/
+data/probe/
 
 # Node / Frontend
 node_modules/
