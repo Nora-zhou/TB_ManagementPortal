@@ -9,6 +9,8 @@ from routes.orders import router as orders_router
 from routes.sub_orders import router as sub_orders_router
 from routes.purchase_orders import router as purchase_orders_router
 from routes.stats import router as stats_router
+from routes.tasks import router as tasks_router
+from routes.snapshots import router as snapshots_router
 from routes.credentials import router as credentials_router
 from routes.rpa_tasks import router as rpa_tasks_router
 from routes.profit_analysis import router as profit_router
@@ -50,6 +52,8 @@ app.include_router(orders_router, prefix="/api")
 app.include_router(sub_orders_router, prefix="/api")
 app.include_router(purchase_orders_router, prefix="/api")
 app.include_router(stats_router, prefix="/api")
+app.include_router(tasks_router, prefix="/api")
+app.include_router(snapshots_router, prefix="/api")
 app.include_router(credentials_router, prefix="/api")
 app.include_router(rpa_tasks_router, prefix="/api")
 app.include_router(profit_router, prefix="/api")
