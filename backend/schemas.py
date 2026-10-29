@@ -480,3 +480,202 @@ class ProfitMonthlyResponse(BaseModel):
     months: list[str]
     series: ProfitMonthlySeries
     kpi:    ProfitMonthlyKPI
+
+
+# ---------------------------------------------------------------------------
+# Pure profit / RPA schemas (012-pure-profit-rpa)
+# ---------------------------------------------------------------------------
+
+# ── 平台账号凭据 ────────────────────────────────────────────────
+
+class AccountCreate(BaseModel):
+    platform: str = Field(pattern="^(qianniu|alimama)$")
+    account_label: str = Field(min_length=1, max_length=200)
+    username: str = Field(min_length=1, max_length=200)
+    password: str = Field(min_length=1, max_length=200)
+    store: int = Field(default=1, ge=1, le=2)
+
+
+class AccountUpdate(BaseModel):
+    account_label: Optional[str] = Field(default=None, min_length=1, max_length=200)
+    username: Optional[str] = Field(default=None, min_length=1, max_length=200)
+    # 留空表示不修改密码
+    password: Optional[str] = Field(default=None, min_length=1, max_length=200)
+    store: Optional[int] = Field(default=None, ge=1, le=2)
+
+
+class AccountRead(BaseModel):
+    id: int
+    platform: str
+    account_label: str
+    username: str
+    store: int
+    password_masked: str
+    last_login_at: Optional[datetime] = None
+    last_login_status: str
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class AccountListResponse(BaseModel):
+    total: int
+    items: list[AccountRead]
+
+
+class DatasetOption(BaseModel):
+    key: str
+    label: str
+    category: str
+
+
+class PlatformMeta(BaseModel):
+    platform: str
+    label: str
+    datasets: list[DatasetOption]
+
+
+class TestLoginResponse(BaseModel):
+    ok: bool
+    status: str          # ok | fail | need_verify
+    message: str
+
+
+# ── RPA 任务 ────────────────────────────────────────────────────
+
+class RPATaskCreate(BaseModel):
+    account_id: int
+    store: int = Field(default=1, ge=1, le=2)
+    datasets: list[str] = Field(min_length=1)
+    period_month: Optional[str] = Field(default=None, pattern="^\\d{4}-\\d{2}$")
+
+
+class RPATaskRead(BaseModel):
+    id: int
+    platform: str
+    account_id: int
+    account_label: Optional[str] = None
+    store: int
+    datasets: list[str]
+    period_month: Optional[str] = None
+    status: str
+    progress: int
+    log: Optional[str] = None
+    result_summary: Optional[str] = None
+    error_message: Optional[str] = None
+    started_at: Optional[datetime] = None
+    finished_at: Optional[datetime] = None
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class RPATaskListResponse(BaseModel):
+    total: int
+    items: list[RPATaskRead]
+
+
+# ── 纯利润分析 ──────────────────────────────────────────────────
+
+class ExpenseInput(BaseModel):
+    """手动录入一条额外费用。"""
+    store: int = Field(default=1, ge=1, le=2)
+    period_month: str = Field(pattern="^\\d{4}-\\d{2}$")
+    category: str = Field(pattern="^(platform_fee|promotion|shipping_insurance|other)$")
+    sub_category: Optional[str] = Field(default=None, max_length=200)
+    amount: float = Field(ge=0.0)
+    note: Optional[str] = Field(default=None, max_length=500)
+
+
+class ExpenseUpdate(BaseModel):
+    amount: Optional[float] = Field(default=None, ge=0.0)
+    note: Optional[str] = Field(default=None, max_length=500)
+
+
+class ExpenseRead(BaseModel):
+    id: int
+    store: int
+    period_month: str
+    category: str
+    sub_category: Optional[str] = None
+    amount: float
+    source: str
+    rpa_task_id: Optional[int] = None
+    note: Optional[str] = None
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class ExpenseListResponse(BaseModel):
+    total: int
+    items: list[ExpenseRead]
+
+
+class PureProfitMonthItem(BaseModel):
+    month: str
+    revenue_s1: float = 0.0
+    revenue_s2: float = 0.0
+    refund_s1: float = 0.0
+    refund_s2: float = 0.0
+    cost_s1: float = 0.0
+    cost_s2: float = 0.0
+    platform_fee_s1: float = 0.0
+    platform_fee_s2: float = 0.0
+    promotion_s1: float = 0.0
+    promotion_s2: float = 0.0
+    shipping_insurance_s1: float = 0.0
+    shipping_insurance_s2: float = 0.0
+    other_s1: float = 0.0
+    other_s2: float = 0.0
+    profit_s1: float = 0.0
+    profit_s2: float = 0.0
+
+
+class PureProfitKPI(BaseModel):
+    revenue_s1: float
+    revenue_s2: float
+    refund_s1: float
+    refund_s2: float
+    cost_s1: float
+    cost_s2: float
+    platform_fee_s1: float
+    platform_fee_s2: float
+    promotion_s1: float
+    promotion_s2: float
+    shipping_insurance_s1: float
+    shipping_insurance_s2: float
+    other_s1: float
+    other_s2: float
+    profit_s1: float
+    profit_s2: float
+    # 合计口径
+    total_revenue: float
+    total_refund: float
+    total_cost: float
+    total_platform_fee: float
+    total_promotion: float
+    total_shipping_insurance: float
+    total_other: float
+    total_profit: float
+    total_profit_margin_pct: Optional[float] = None
+    # 环比（最近月 vs 上一月）
+    profit_mom_pct: Optional[float] = None
+    margin_mom_pct: Optional[float] = None
+    latest_month: Optional[str] = None
+
+
+class DataSourceStatus(BaseModel):
+    platform: str
+    label: str
+    last_task_status: Optional[str] = None
+    last_finished_at: Optional[datetime] = None
+    account_count: int = 0
+    configured: bool = False
+
+
+class PureProfitResponse(BaseModel):
+    months: list[str]
+    items: list[PureProfitMonthItem]
+    kpi: PureProfitKPI
+    data_sources: list[DataSourceStatus]

@@ -12,11 +12,15 @@ import SupplierManagement from './components/SupplierManagement.vue'
 import SupplierDashboard from './components/SupplierDashboard.vue'
 import HomeDashboard from './components/HomeDashboard.vue'
 import SupplierEvaluation from './components/SupplierEvaluation.vue'
+import PureProfitAnalysis from './components/PureProfitAnalysis.vue'
+import AccountManage from './components/AccountManage.vue'
 
 const router = createRouter({
   history: createWebHashHistory(),
   routes: [
     { path: '/', component: HomeDashboard },
+    { path: '/profit', component: PureProfitAnalysis },
+    { path: '/accounts', component: AccountManage },
     { path: '/products', component: ProductList },
     { path: '/products/sku-costs', component: SKUCostConfig },
     { path: '/products/:id', component: ProductDetail },
