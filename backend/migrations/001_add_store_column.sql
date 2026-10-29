@@ -1,0 +1,11 @@
+-- 008-multi-store：为既有表补 store 列。
+--
+-- 新库由 SQLModel.create_all() 直接建出带 store 列的表，本文件只对老库生效。
+-- SQLite 不支持 ADD COLUMN IF NOT EXISTS，因此用 @ensure-column 指令声明意图：
+-- 执行器会先查 PRAGMA table_info，列不存在才发 ALTER，重复执行不会报错。
+
+-- @ensure-column order.store INTEGER DEFAULT 1
+-- @ensure-column suborder.store INTEGER DEFAULT 1
+-- @ensure-column purchaseorder.store INTEGER DEFAULT 1
+-- @ensure-column product.store INTEGER DEFAULT 1
+-- @ensure-column pricesnapshot.store INTEGER DEFAULT 1
