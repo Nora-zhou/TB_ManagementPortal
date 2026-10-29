@@ -1,0 +1,12 @@
+{
+  "run_id": "fixture-001",
+  "item_id": "1052810876450",
+  "url": "https://item.taobao.com/item.htm?id=1052810876450",
+  "started_at": "2026-10-29T08:00:00+00:00",
+  "finished_at": "2026-10-29T08:00:20+00:00",
+  "ok": true,
+  "error": null,
+  "xhr_count": 7,
+  "source": "page_dom",
+  "desc_fetched": true
+}

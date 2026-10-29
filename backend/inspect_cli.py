@@ -38,8 +38,6 @@ INSPECTION_TABLES = (
 
 # 占位命令 → 计划中实现它的迭代编号
 PENDING_COMMANDS: dict[str, str] = {
-    "collect": "I01",
-    "show": "I03",
     "validate": "I06",
     "analyze": "I07",
     "signals": "I08",
@@ -154,6 +152,119 @@ def cmd_init(db_path: Path) -> int:
     return 0
 
 
+def cmd_collect(args: argparse.Namespace) -> int:
+    db_path = Path(args.db).expanduser().resolve()
+    if getattr(args, "source", None) == "api":
+        safe_print("collect --source api 将在 I04 实现（TOP API 数据源）")
+        return 3
+    if getattr(args, "verify", False):
+        safe_print("collect --verify 将在 I02 实现（双通道互校）")
+        return 3
+    if getattr(args, "store", None) or getattr(args, "limit", None):
+        safe_print("collect --store/--limit 将在 I05 实现（批量采集）")
+        return 3
+    if not getattr(args, "item", None):
+        safe_print("collect 需要 --item <商品ID>（批量采集见 I05）")
+        return 2
+
+    from inspection.collect.item import CollectError, fetch_item
+    from inspection.collect.parser import parse_item
+    from inspection.store import save_snapshot
+
+    try:
+        run_dir = fetch_item(args.item, headed=not args.headless)
+    except CollectError as exc:
+        safe_print(f"[FAIL] {exc.kind}: {exc.message}")
+        return 2
+
+    data = parse_item(run_dir)
+
+    db_note = ""
+    try:
+        save_snapshot(make_engine(db_path), data, store=1)
+        db_note = f"saved  run_id={data['run_id']}"
+    except Exception as exc:  # noqa: BLE001 — 落库失败不影响本次采集产物
+        db_note = f"未入库：{exc}"
+
+    safe_print(f"run       {data['run_id']}")
+    safe_print(f"item      {data['item_id']}")
+    safe_print(f"title     {data['title'] or '-'}")
+    safe_print(f"price     {_yuan(data['price_cents'])}")
+    if data.get("promo_price_cents") is not None:
+        safe_print(f"promo     {_yuan(data['promo_price_cents'])}")
+    if data.get("price_min_cents") is not None:
+        safe_print(
+            f"range     {_yuan(data['price_min_cents'])} ~ {_yuan(data['price_max_cents'])}"
+        )
+    safe_print(f"images    {_num(data['image_count'])}")
+    safe_print(f"detail    {_num(data['detail_image_count'])}")
+    safe_print(f"sales     {data['sales_text'] or '-'}")
+    safe_print(f"skus      {_num(len(data['sku_json']) or None)}")
+    safe_print(f"stock     {_num(data['stock_total'])}")
+    safe_print(f"review    {_num(data['review_count'])}")
+    safe_print(f"source    {data['source']}")
+    safe_print(f"reliable  {data['field_reliable']}")
+    safe_print(f"raw       {data['raw_path']}")
+    safe_print(db_note)
+    return 0
+
+
+def cmd_show(args: argparse.Namespace) -> int:
+    from inspection.store import latest_snapshot, to_display
+
+    if not (args.item or args.run):
+        safe_print("show 需要 --item <商品ID> 或 --run <run_id>")
+        return 2
+
+    engine = make_engine(Path(args.db).expanduser().resolve())
+    snapshot = latest_snapshot(engine, item_id=args.item, run_id=args.run)
+    if snapshot is None:
+        safe_print("没有找到快照（先运行 collect）")
+        return 2
+
+    data = to_display(snapshot)
+    safe_print(f"run       {data['run_id']}")
+    safe_print(f"item      {data['item_id']}")
+    safe_print(f"title     {data['title'] or '-'}")
+    safe_print(f"price     {_yuan(data['price_cents'])}")
+    safe_print(f"promo     {_yuan(data['promo_price_cents'])}")
+    safe_print(
+        f"range     {_yuan(data['price_min_cents'])} ~ {_yuan(data['price_max_cents'])}"
+    )
+    safe_print(f"images    {_num(data['image_count'])}")
+    safe_print(f"detail    {_num(data['detail_image_count'])}")
+    safe_print(f"sales     {data['sales_text'] or '-'}")
+    safe_print(f"stock     {_num(data['stock_total'])}  ({data['item_status'] or '-'})")
+    safe_print(f"review    {_num(data['review_count'])}")
+    safe_print(f"reliable  {data['field_reliable']}")
+    safe_print(f"source    {data['source']}")
+    safe_print(f"collected {data['collected_at']}")
+
+    for sku in data.get("sku") or []:
+        safe_print(
+            f"  sku     {sku.get('sku_id')}  {sku.get('name') or '-'}  "
+            f"{_yuan(sku.get('price_cents'))}  库存 {sku.get('stock')}  "
+            f"{sku.get('logistics') or ''}"
+        )
+    service = data.get("service") or {}
+    if service:
+        labels = "、".join(service.get("labels") or [])
+        safe_print(
+            f"service   {service.get('freight') or '-'} / "
+            f"{service.get('ship_aging') or '-'} / {labels or '-'}"
+        )
+    safe_print(f"raw       {data['raw_path']}")
+    return 0
+
+
+def _yuan(cents: int | None) -> str:
+    return "-" if cents is None else f"{cents / 100:.2f}"
+
+
+def _num(value: int | None) -> str:
+    return "-" if value is None else str(value)
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="inspect_cli.py",
@@ -171,12 +282,14 @@ def build_parser() -> argparse.ArgumentParser:
 
     sub.add_parser("doctor", help="自检：库 / 迁移 / 表 / Playwright / raw 目录")
     sub.add_parser("init", help="建表并执行增量迁移")
+    sub.add_parser("login", help="打开检测专用浏览器完成淘宝登录（I01）")
 
-    p = sub.add_parser("collect", help="采集商品或店铺内容")
+    p = sub.add_parser("collect", help="采集商品页内容（I01）")
     p.add_argument("--item", help="商品 ID")
     p.add_argument("--store", help="店铺编号（1/2）")
     p.add_argument("--limit", type=int, help="最多采集多少条")
     p.add_argument("--source", choices=("api", "page"), help="数据源")
+    p.add_argument("--headless", action="store_true", help="无头模式（默认有头，反爬风险低）")
     p.add_argument("--verify", action="store_true", help="启用双通道互校")
 
     p = sub.add_parser("show", help="查看已采集快照")
@@ -218,6 +331,14 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_doctor(db_path)
     if args.command == "init":
         return cmd_init(db_path)
+    if args.command == "login":
+        from inspection.collect.manual_login import login
+
+        return login()
+    if args.command == "collect":
+        return cmd_collect(args)
+    if args.command == "show":
+        return cmd_show(args)
 
     iteration = PENDING_COMMANDS.get(args.command, "后续迭代")
     safe_print(

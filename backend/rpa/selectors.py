@@ -140,6 +140,27 @@ ALIMAMA = {
     "report": "https://subway.simba.taobao.com/report",
 }
 
+# ── 淘宝商品详情页（013 检测采集，2026-10 实测） ────────────────
+# 匿名访问会被重定向到登录墙（pc-detail-ssr-2025 + tmd），必须先在
+# 检测专用 profile（account-9001）里人工扫码登录（inspect_cli.py login）。
+# 数据不在 XHR 里，在 SSR HTML 内嵌的 window.__ICE_APP_CONTEXT__（见 parser.py）。
+TAOBAO_ITEM = {
+    "url_template": "https://item.taobao.com/item.htm?id={item_id}",
+    # 未登录判定：goto 后的最终 URL 含此关键词（跳登录墙）
+    "login_url_keyword": "login.taobao.com",
+    # 商品不存在 / 已下架的页面文案
+    "gone_markers": ("宝贝不存在", "该商品已经下架", "商品已下架", "页面不见了"),
+    # SSR 数据就绪判定（page.evaluate 用的 JS 表达式）
+    "ssr_ready_js": "!!(window.__ICE_APP_CONTEXT__ && window.__ICE_APP_CONTEXT__.loaderData)",
+    # 详情页描述地址在 SSR JSON 里的字段（fetch 层用正则提取）
+    "desc_url_field": "pcADescUrl",
+}
+
+
+def item_url(item_id: str) -> str:
+    return TAOBAO_ITEM["url_template"].format(item_id=item_id)
+
+
 # ── 金额提取 ──────────────────────────────────────────────────────
 # 在页面中定位「金额」文本的通用候选（命中后取其文本中的数字）
 AMOUNT_NODES = [

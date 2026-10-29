@@ -38,8 +38,21 @@ def test_init_command_creates_tables(tmp_path, capsys):
 
 
 def test_pending_command_returns_3(capsys):
-    assert main(["collect", "--item", "123456"]) == 3
+    # validate 等仍是占位命令（collect/show 已实装，不能用它们测占位）
+    assert main(["validate", "--run", "x"]) == 3
     assert "尚未实现" in capsys.readouterr().out
+
+
+def test_collect_requires_item(capsys):
+    assert main(["collect"]) == 2
+    assert "需要 --item" in capsys.readouterr().out
+
+
+def test_collect_rejects_unimplemented_flags(capsys):
+    assert main(["collect", "--item", "1", "--source", "api"]) == 3
+    assert "I04" in capsys.readouterr().out
+    assert main(["collect", "--item", "1", "--verify"]) == 3
+    assert "I02" in capsys.readouterr().out
 
 
 def test_unknown_command_exits_2():

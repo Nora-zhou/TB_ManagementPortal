@@ -22,6 +22,28 @@
 4. 继续硬碰（伪造 cookie 链 / 解 mtop 签名 / 小号登录）= 高维护成本 + 高封号风险，
    按 G01 纪律**不在 I01 做**。
 
+## 决策更新（2026-10-29 下午）：改用「检测专用 profile + 人工扫码登录」
+
+用户决策：不用 API/手工导入，走浏览器登录态采集 —— 打开检测专用浏览器，
+人工扫码登录一次，后续采集复用登录态。
+
+实测结论（登录后，account-9001 profile）：
+- **headless 首次访问触发滑块**（风控）；headed 正常。
+- **详情数据不在 XHR 里，而在 SSR HTML 内嵌的 `window.__ICE_APP_CONTEXT__`**：
+  - 主接口未出现 `mtop.taobao.pcdetail.data.get`，数据由服务端直出。
+  - 提取锚点：`var b = {...};for (var k in a) {b[k] = a[k]}` 中的 JSON。
+- 字段映射（实测已验证）：
+  - 标题 `loaderData.home.data.res.item.title`
+  - 主图 `...item.images`（5 张，`img.alicdn.com` 完整 URL）
+  - 月销 `...item.vagueSellCount` + `componentsVO.titleVO.salesDesc`（"月销 12"）
+  - 价格 `componentsVO.priceVO.price.priceMoney`（**单位：分**，如 "4990"）
+  - 券后价 `priceVO.extraPrice.priceMoney`（如 "3991"）
+  - 评价数 `componentsVO.rateVO.totalCount`
+  - SKU `skuCore.sku2info`（`{quantity, price:{priceMoney}, logisticsTime}`，quantity=库存）
+  - 服务 `componentsVO.deliveryVO.agingDesc`（"48小时内发货"）
+  - 详情页地址 `item.pcADescUrl`（`market.m.taobao.com/app/detail-project/desc/...`，
+    二次请求其内容数 `<img>` 即详情图数）
+
 ## 可行的替代数据源（按 ROI 排序）
 
 | 方案 | 覆盖范围 | 成熟度 | 风险 |
