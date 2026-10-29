@@ -59,9 +59,21 @@ class ScrapeError(Exception):
 class BrowserSession:
     """单个平台账号的一次抓取会话（同一账号复用同一浏览器 profile）。"""
 
-    def __init__(self, account_id: int, label: str = ""):
+    def __init__(
+        self,
+        account_id: int,
+        label: str = "",
+        *,
+        mode: str | None = None,
+        headless: bool | None = None,
+    ):
         self.account_id = account_id
         self.label = label
+        # 可选覆盖（013 检测采集器用）：强制 isolated + 独立 profile / headless，
+        # 与全局 RPA_BROWSER_MODE 解耦。None = 跟随 rpa_config，
+        # rpa/runner.py 的现有调用方式不受影响。
+        self._mode = (mode or rpa_config.browser_mode).strip().lower()
+        self._headless = rpa_config.headless if headless is None else headless
         self._pw = None
         self._context: BrowserContext | None = None
         self._browser: Browser | None = None
@@ -72,7 +84,7 @@ class BrowserSession:
         self._our_pages: list[Page] = []
         self.profile_dir: Path | None = (
             rpa_config.browser_profile_dir(account_id)
-            if rpa_config.browser_mode == "isolated"
+            if self._mode == "isolated"
             else None
         )
         self.screenshots: list[str] = []
@@ -81,14 +93,14 @@ class BrowserSession:
     # ── 生命周期 ─────────────────────────────────────────────────
     def __enter__(self) -> "BrowserSession":
         self._pw = sync_playwright().start()
-        mode = rpa_config.browser_mode
+        mode = self._mode
 
         if mode == "cdp":
             # 连接一个已经打开的浏览器，直接复用其登录态
             return self._connect_cdp()
 
         launch_kwargs: dict[str, Any] = {
-            "headless": rpa_config.headless,
+            "headless": self._headless,
             "viewport": {"width": 1440, "height": 900},
             "accept_downloads": True,
             "args": [
