@@ -14,9 +14,16 @@ venv/
 env/
 .env
 
-# Database
-# *.db
-# *.sqlite3
+# Database（本地数据，不入库；含 password_enc 与真实经营数据）
+*.db
+*.db-journal
+*.sqlite3
+
+# RPA / 采集运行时产物
+# browser_data 是 Chromium 持久化 profile，内含淘宝/千牛登录 Cookie，绝不入库
+browser_data/
+rpa_screenshots/
+data/raw/
 
 # Node / Frontend
 node_modules/
