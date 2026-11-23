@@ -4,6 +4,7 @@ import './style.css'
 import App from './App.vue'
 import ProductList from './components/ProductList.vue'
 import ProductDetail from './components/ProductDetail.vue'
+import ProductInspection from './components/ProductInspection.vue'
 import SKUCostConfig from './components/SKUCostConfig.vue'
 import OrderList from './components/OrderList.vue'
 import OrderDashboard from './components/OrderDashboard.vue'
@@ -13,15 +14,20 @@ import SupplierDashboard from './components/SupplierDashboard.vue'
 import HomeDashboard from './components/HomeDashboard.vue'
 import SupplierEvaluation from './components/SupplierEvaluation.vue'
 import PureProfitAnalysis from './components/PureProfitAnalysis.vue'
+import ExpenseAnalysis from './components/ExpenseAnalysis.vue'
 import AccountManage from './components/AccountManage.vue'
+import OperatingCostImport from './components/OperatingCostImport.vue'
 
 const router = createRouter({
   history: createWebHashHistory(),
   routes: [
     { path: '/', component: HomeDashboard },
     { path: '/profit', component: PureProfitAnalysis },
+    { path: '/expense-analysis', component: ExpenseAnalysis },
     { path: '/accounts', component: AccountManage },
+    { path: '/operating-costs/import', component: OperatingCostImport },
     { path: '/products', component: ProductList },
+    { path: '/inspection', component: ProductInspection },
     { path: '/products/sku-costs', component: SKUCostConfig },
     { path: '/products/:id', component: ProductDetail },
     { path: '/orders', component: OrderList },

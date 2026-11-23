@@ -14,7 +14,12 @@ from datetime import datetime, timezone
 from sqlalchemy import Engine
 from sqlmodel import Session, select
 
-from inspection.models import CORE_FIELDS, InspectionRun, ItemSnapshot
+from inspection.models import (
+    CORE_FIELDS,
+    AssertionResult,
+    InspectionRun,
+    ItemSnapshot,
+)
 
 # parse 返回的 Python 对象字段 → 表里的 JSON 文本列
 _JSON_COLUMNS = {
@@ -121,6 +126,40 @@ def save_snapshot(
         # 不抛异常：数据已入库，由调用方决定是否展示降级提示
         return run_id
     return run_id
+
+
+def save_assertions(
+    engine: Engine,
+    run_id: str,
+    results: list[dict],
+    item_id: str | None = None,
+) -> int:
+    """写入断言结果。
+
+    断言属判定层：同一 run_id 重跑时**覆盖**，不累加。
+    """
+    with Session(engine) as session:
+        existing = session.exec(
+            select(AssertionResult).where(AssertionResult.run_id == run_id)
+        ).all()
+        for row in existing:
+            session.delete(row)
+
+        for item in results:
+            session.add(
+                AssertionResult(
+                    run_id=run_id,
+                    item_id=item_id,
+                    rule_id=item["rule_id"],
+                    passed=int(item["passed"]),
+                    actual=item.get("actual"),
+                    expected=item.get("expected"),
+                    message=item.get("message") or None,
+                )
+            )
+        session.commit()
+
+    return len(results)
 
 
 def latest_snapshot(

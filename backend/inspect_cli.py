@@ -206,6 +206,10 @@ def cmd_collect(args: argparse.Namespace) -> int:
     safe_print(f"reliable  {data['field_reliable']}")
     safe_print(f"raw       {data['raw_path']}")
     safe_print(db_note)
+
+    preview_path = _write_preview(lambda: _preview_from_parse(data), run_dir)
+    if preview_path and getattr(args, "open", False):
+        _open_browser(preview_path)
     return 0
 
 
@@ -254,7 +258,42 @@ def cmd_show(args: argparse.Namespace) -> int:
             f"{service.get('ship_aging') or '-'} / {labels or '-'}"
         )
     safe_print(f"raw       {data['raw_path']}")
+
+    run_dir = Path(data["raw_path"]) if data.get("raw_path") else None
+    if run_dir and run_dir.is_dir():
+        preview_path = _write_preview(lambda: data, run_dir)
+        if preview_path and getattr(args, "open", False):
+            _open_browser(preview_path)
     return 0
+
+
+def _preview_from_parse(data: dict) -> dict:
+    from inspection.preview import from_parse
+
+    return from_parse(data)
+
+
+def _write_preview(make_data, run_dir: Path) -> Path | None:
+    """把快照渲染成 run_dir/preview.html，并打印路径（失败不阻断主流程）。"""
+    try:
+        from inspection.preview import render_preview
+
+        path = render_preview(make_data(), run_dir)
+    except Exception as exc:  # noqa: BLE001 — 预览只是辅助产物
+        safe_print(f"preview   生成失败：{exc}")
+        return None
+    safe_print(f"preview   {path}")
+    return path
+
+
+def _open_browser(path: Path) -> None:
+    import webbrowser
+
+    try:
+        webbrowser.open(path.resolve().as_uri())
+        safe_print("已在浏览器中打开预览页")
+    except Exception as exc:  # noqa: BLE001
+        safe_print(f"打开浏览器失败：{exc}")
 
 
 def _yuan(cents: int | None) -> str:
@@ -291,10 +330,12 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--source", choices=("api", "page"), help="数据源")
     p.add_argument("--headless", action="store_true", help="无头模式（默认有头，反爬风险低）")
     p.add_argument("--verify", action="store_true", help="启用双通道互校")
+    p.add_argument("--open", action="store_true", help="采集完自动打开 preview.html")
 
     p = sub.add_parser("show", help="查看已采集快照")
     p.add_argument("--item", help="商品 ID")
     p.add_argument("--run", help="run_id")
+    p.add_argument("--open", action="store_true", help="生成并打开 preview.html")
 
     for name, help_text in (
         ("validate", "运行断言校验"),

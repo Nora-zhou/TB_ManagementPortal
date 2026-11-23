@@ -12,6 +12,7 @@ import {
 } from 'echarts/components'
 import VChart from 'vue-echarts'
 import { fetchProfitMonthly } from '../api/stats.js'
+import MonthPicker from './MonthPicker.vue'
 
 use([
   CanvasRenderer, BarChart, LineChart, PieChart,
@@ -81,7 +82,12 @@ const trendOption = computed(() => {
     },
     legend: { type: 'scroll', bottom: 0 },
     grid: { left: '3%', right: '8%', bottom: '15%', containLabel: true },
-    xAxis: { type: 'category', data: months, boundaryGap: false },
+    xAxis: {
+      type: 'category',
+      data: months,
+      boundaryGap: true,
+      axisTick: { alignWithLabel: true },
+    },
     yAxis: [
       {
         name: '金额（元）',
@@ -99,8 +105,8 @@ const trendOption = computed(() => {
       { name: '总收入', type: 'line', smooth: true, yAxisIndex: 0, color: '#0ea5e9',              data: s.total_revenue },
       { name: '总成本', type: 'line', smooth: true, yAxisIndex: 0, color: '#d97706',              data: s.total_cost },
       { name: '净利润', type: 'line', smooth: true, yAxisIndex: 0, color: '#059669',              data: s.total_profit },
-      { name: '1店利润', type: 'bar', yAxisIndex: 1, itemStyle: { color: 'rgba(14,165,233,0.5)' }, data: s.profit_s1 },
-      { name: '2店利润', type: 'bar', yAxisIndex: 1, itemStyle: { color: 'rgba(5,150,105,0.5)' }, data: s.profit_s2 },
+      { name: '1店利润', type: 'bar', yAxisIndex: 1, barMaxWidth: 48, itemStyle: { color: 'rgba(14,165,233,0.5)' }, data: s.profit_s1 },
+      { name: '2店利润', type: 'bar', yAxisIndex: 1, barMaxWidth: 48, itemStyle: { color: 'rgba(5,150,105,0.5)' }, data: s.profit_s2 },
     ],
   }
 })
@@ -140,16 +146,19 @@ const pieOption = computed(() => {
 <template>
   <div class="home-dashboard">
     <h2 class="page-title">利润分析总览</h2>
+    <p class="page-desc">
+      成本口径：货品采购成本 + 运营费用（平台扣费、推广费、运费险、其它费用）。
+    </p>
 
     <!-- Filter row -->
     <div class="filter-row">
       <label class="filter-label">
         开始月份
-        <input v-model="startMonth" type="text" placeholder="YYYY-MM" maxlength="7" class="month-input" />
+        <MonthPicker v-model="startMonth" />
       </label>
       <label class="filter-label">
         结束月份
-        <input v-model="endMonth" type="text" placeholder="YYYY-MM" maxlength="7" class="month-input" />
+        <MonthPicker v-model="endMonth" />
       </label>
     </div>
 
@@ -245,7 +254,14 @@ const pieOption = computed(() => {
 }
 
 .page-title {
-  margin-bottom: 16px;
+  margin-bottom: 4px;
+}
+
+.page-desc {
+  margin: 0 0 16px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-muted);
 }
 
 .filter-row {

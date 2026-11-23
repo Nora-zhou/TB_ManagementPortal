@@ -8,6 +8,7 @@ from typing import Annotated
 
 from database import get_session
 from models import SubOrder
+from routes.reconcile import check_months
 from schemas import SubOrderImportResult
 
 router = APIRouter(prefix="/sub-orders", tags=["sub-orders"])
@@ -85,6 +86,7 @@ async def import_sub_orders(
     updated = 0
     skipped = 0
     errors: list[str] = []
+    touched_months: set[str] = set()
 
     for row_num, row in enumerate(rows[1:], start=2):
         taobao_item_id = str(row[col["商品ID"]]).strip() if row[col["商品ID"]] is not None else ""
@@ -126,6 +128,8 @@ async def import_sub_orders(
 
         created_at = _parse_datetime(row[col["订单创建时间"]])
         paid_at = _parse_datetime(row[col["订单付款时间"]])
+        if created_at is not None:
+            touched_months.add(created_at.strftime("%Y-%m"))
 
         existing = session.exec(
             select(SubOrder).where(SubOrder.sub_order_id == sub_order_id)
@@ -169,9 +173,11 @@ async def import_sub_orders(
 
     session.commit()
 
+    # 导入后自动核对：把本批次涉及的月份与平台基准/相邻月做一次比对
     return SubOrderImportResult(
         imported=imported,
         updated=updated,
         skipped=skipped,
         errors=errors,
+        reconcile=check_months(session, list(touched_months), store),
     )

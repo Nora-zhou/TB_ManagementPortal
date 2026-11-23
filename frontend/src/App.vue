@@ -1,6 +1,15 @@
 <script setup>
+import { computed } from 'vue'
 import { useRoute } from 'vue-router'
+
 const route = useRoute()
+const isConfigActive = computed(
+  () =>
+    route.path === '/import' ||
+    route.path === '/accounts' ||
+    route.path.startsWith('/operating-costs') ||
+    route.path.startsWith('/products/sku'),
+)
 </script>
 
 <template>
@@ -9,22 +18,25 @@ const route = useRoute()
       <div class="nav-inner">
         <router-link to="/products" class="nav-brand">
           <span class="brand-icon">💰</span>
-          <span class="brand-name">我的宝库</span>
+          <span class="brand-name">StoreScope</span>
         </router-link>
 
         <nav class="nav-links">
           <router-link to="/" class="nav-link" active-class="nav-link--active" exact-active-class="nav-link--active">首页</router-link>
           <router-link to="/profit" class="nav-link" active-class="nav-link--active">纯利润分析</router-link>
+          <router-link to="/expense-analysis" class="nav-link" active-class="nav-link--active">运营费用分析</router-link>
           <router-link to="/orders/dashboard" class="nav-link" active-class="nav-link--active">订单分析</router-link>
           <router-link to="/products" class="nav-link" active-class="nav-link--active">商品列表</router-link>
+          <router-link to="/inspection" class="nav-link" active-class="nav-link--active">商品分析</router-link>
           <router-link to="/orders" class="nav-link" active-class="nav-link--active" exact-active-class="nav-link--active">订单列表</router-link>
           <router-link to="/suppliers" class="nav-link" active-class="nav-link--active">供应商管理</router-link>
           <div class="nav-dropdown">
-            <span class="nav-link nav-link--dropdown" :class="{ 'nav-link--active': route.path === '/import' || route.path.startsWith('/products/sku') }">
+            <span class="nav-link nav-link--dropdown" :class="{ 'nav-link--active': isConfigActive }">
               基础配置 <span class="dropdown-arrow">▾</span>
             </span>
             <div class="dropdown-menu">
               <router-link to="/import" class="dropdown-item" active-class="dropdown-item--active">数据导入</router-link>
+              <router-link to="/operating-costs/import" class="dropdown-item" active-class="dropdown-item--active">运营成本导入</router-link>
               <router-link to="/products/sku-costs" class="dropdown-item" active-class="dropdown-item--active">SKU 成本配置</router-link>
               <router-link to="/accounts" class="dropdown-item" active-class="dropdown-item--active">平台账号管理</router-link>
             </div>

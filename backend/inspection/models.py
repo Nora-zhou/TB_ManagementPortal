@@ -154,6 +154,48 @@ class Score(SQLModel, table=True):
     rule_version: str = Field(default="v1", max_length=32)
 
 
+class ItemTraffic(SQLModel, table=True):
+    """千牛「商品分析」导出数据（手工导入，不跑 RPA）。
+
+    为什么单独一张表：这是**结果数据**（多少人来了、转化多少），
+    与 item_snapshot 的**内容数据**（页面长什么样）是两类事实，
+    混在一张表里会让「素材不合规」和「转化率低」无法区分归因。
+    """
+
+    __tablename__ = "item_traffic"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    item_id: str = Field(index=True, max_length=64)
+    title: Optional[str] = Field(default=None, max_length=500)
+    store: int = Field(default=1, index=True)
+
+    period_days: int = Field(default=7, index=True)      # 7 / 30 / 自定义
+    period_start: Optional[datetime] = None
+    period_end: Optional[datetime] = None
+
+    visitors: Optional[int] = None                        # 访客数
+    page_views: Optional[int] = None                      # 浏览量
+    pay_buyers: Optional[int] = None                      # 支付买家数
+    pay_units: Optional[int] = None                       # 支付件数
+    pay_amount: Optional[float] = None                    # 支付金额（元）
+    conversion_rate: Optional[float] = None               # 支付转化率 0–1
+    cart_units: Optional[int] = None                      # 加购件数
+    fav_units: Optional[int] = None                       # 收藏件数
+
+    # ── 承接质量（生意参谋「商品效果」里本来就有，之前被丢在未识别列）──
+    avg_stay_seconds: Optional[float] = None              # 平均停留时长（秒）
+    bounce_rate: Optional[float] = None                   # 详情页跳出率 0–1
+    cart_buyers: Optional[int] = None                     # 加购人数（≠加购件数）
+    order_buyers: Optional[int] = None                    # 下单买家数
+    order_amount: Optional[float] = None                  # 下单金额（元）
+    order_conversion_rate: Optional[float] = None         # 下单转化率 0–1
+    search_visitors: Optional[int] = None                 # 搜索引导访客数
+    search_conversion_rate: Optional[float] = None        # 搜索引导支付转化率 0–1
+
+    source_file: Optional[str] = Field(default=None, max_length=255)
+    imported_at: datetime = Field(default_factory=_now)
+
+
 class InspectionReport(SQLModel, table=True):
     """报告产物登记。"""
 
@@ -175,5 +217,6 @@ TABLES = (
     AssertionResult,
     Metric,
     Score,
+    ItemTraffic,
     InspectionReport,
 )

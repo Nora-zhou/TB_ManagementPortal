@@ -9,6 +9,7 @@
       <button :class="{ active: activeTab === 'product' }" @click="activeTab = 'product'">商品目录</button>
       <button :class="{ active: activeTab === 'suborder' }" @click="activeTab = 'suborder'">订单信息</button>
       <button :class="{ active: activeTab === 'purchase' }" @click="activeTab = 'purchase'">采购订单</button>
+      <button :class="{ active: activeTab === 'traffic' }" @click="activeTab = 'traffic'">流量数据</button>
     </div>
 
     <div class="import-panel">
@@ -22,6 +23,7 @@
         <SubOrderImport :store="selectedStore" />
       </div>
       <PurchaseOrderImport v-show="activeTab === 'purchase'" />
+      <TrafficImport v-show="activeTab === 'traffic'" />
     </div>
   </div>
 </template>
@@ -31,6 +33,7 @@ import { ref } from 'vue'
 import ProductImport from './ProductImport.vue'
 import SubOrderImport from './SubOrderImport.vue'
 import PurchaseOrderImport from './PurchaseOrderImport.vue'
+import TrafficImport from './TrafficImport.vue'
 
 const activeTab = ref('product')
 const selectedStore = ref(1)

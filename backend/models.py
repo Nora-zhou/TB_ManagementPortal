@@ -67,6 +67,25 @@ class SubOrder(SQLModel, table=True):
     store: int = Field(default=1)  # 1=店铺1, 2=店铺2
 
 
+class PlatformMonthStat(SQLModel, table=True):
+    """生意参谋「核心指标监控」里登记的月度基准，用于订单导入后的自动核对。
+
+    只存平台侧公开可见的 4 个核心指标，作为与 suborder 汇总值比对的参照系。
+    """
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    store: int = Field(default=1, index=True)
+    period_month: str = Field(max_length=7, index=True)   # YYYY-MM
+    pay_amount: Optional[float] = None                    # 支付金额
+    refund_amount: Optional[float] = None                 # 退款金额（完成时间）
+    paid_items: Optional[float] = None                    # 支付件数
+    paid_buyers: Optional[float] = None                   # 支付买家数（≈ 支付单数）
+    note: Optional[str] = Field(default=None, max_length=500)
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+    __table_args__ = (UniqueConstraint("store", "period_month"),)
+
+
 class PurchaseOrder(SQLModel, table=True):
     id:            Optional[int]      = Field(default=None, primary_key=True)
     order_id:      str                = Field(unique=True, index=True, max_length=64)
@@ -178,6 +197,7 @@ class StorePlatformExpense(SQLModel, table=True):
     category: str = Field(max_length=32, index=True)      # platform_fee | promotion | shipping_insurance | other
     sub_category: Optional[str] = Field(default=None, max_length=200)  # 直通车 / 引力魔方 / ...
     amount: float = Field(default=0.0)
+    transaction_amount: float = Field(default=0.0)        # 账单「本月交易额」，用于计算 ROI
     source: str = Field(default="manual")                 # rpa | manual | xlsx
     rpa_task_id: Optional[int] = None
     note: Optional[str] = Field(default=None, max_length=500)

@@ -1,0 +1,10 @@
+-- 生意参谋「商品效果」报表里有、但之前被丢进未识别列的承接质量字段。
+-- 老数据这些列为 NULL，重新导入同一期即可回填（按 (store,item_id,期次) 覆盖）。
+-- @ensure-column item_traffic.avg_stay_seconds REAL
+-- @ensure-column item_traffic.bounce_rate REAL
+-- @ensure-column item_traffic.cart_buyers INTEGER
+-- @ensure-column item_traffic.order_buyers INTEGER
+-- @ensure-column item_traffic.order_amount REAL
+-- @ensure-column item_traffic.order_conversion_rate REAL
+-- @ensure-column item_traffic.search_visitors INTEGER
+-- @ensure-column item_traffic.search_conversion_rate REAL

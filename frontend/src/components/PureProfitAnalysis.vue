@@ -14,6 +14,7 @@ import VChart from 'vue-echarts'
 import { fetchPureProfit, fetchExpenses, createExpense, updateExpense, deleteExpense } from '../api/profit.js'
 import { fetchAccounts, fetchPlatforms } from '../api/credentials.js'
 import { createTask, cancelTask, fetchTask } from '../api/rpa_tasks.js'
+import MonthPicker from './MonthPicker.vue'
 
 use([
   CanvasRenderer, BarChart, LineChart,
@@ -22,8 +23,15 @@ use([
 
 const MONTH_RE = /^\d{4}-\d{2}$/
 
+function previousMonthKey() {
+  const date = new Date()
+  date.setDate(1)
+  date.setMonth(date.getMonth() - 1)
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+}
+
 const startMonth = ref('')
-const endMonth   = ref('')
+const endMonth   = ref(previousMonthKey())
 const loading    = ref(false)
 const error      = ref(null)
 const data       = ref(null)
@@ -165,6 +173,152 @@ const trendOption = computed(() => {
       },
     ],
   }
+})
+
+// ── 运营视角：收入去向与利润率 ─────────────────────────────────
+function monthTotal(item, field) {
+  return (item[field + '_s1'] ?? 0) + (item[field + '_s2'] ?? 0)
+}
+
+function itemMargin(item) {
+  const revenue = monthTotal(item, 'revenue')
+  const net = revenue - monthTotal(item, 'refund')
+  return net > 0 ? (monthTotal(item, 'profit') / net) * 100 : null
+}
+
+const opsStructureOption = computed(() => {
+  const items = (data.value?.items ?? []).filter(
+    (item) => monthTotal(item, 'revenue') > 0,
+  )
+  if (!items.length) return {}
+
+  const rows = items.map((item) => {
+    const revenue = monthTotal(item, 'revenue')
+    return {
+      month: item.month,
+      revenue,
+      profit: monthTotal(item, 'profit'),
+      refund: monthTotal(item, 'refund'),
+      cost: monthTotal(item, 'cost'),
+      platform_fee: monthTotal(item, 'platform_fee'),
+      promotion: monthTotal(item, 'promotion'),
+      shipping_insurance: monthTotal(item, 'shipping_insurance'),
+      other: monthTotal(item, 'other'),
+      margin: itemMargin(item),
+    }
+  })
+
+  const share = (value, revenue) => (revenue > 0 ? Number(((value / revenue) * 100).toFixed(2)) : 0)
+  const segment = (key, name, color) => ({
+    name,
+    type: 'bar',
+    stack: 'revenue',
+    barMaxWidth: 46,
+    color,
+    data: rows.map((row) => ({
+      value: share(row[key], row.revenue),
+      amount: row[key],
+    })),
+  })
+
+  return {
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: { type: 'shadow' },
+      formatter(params) {
+        const row = rows.find((item) => item.month === params[0].axisValue)
+        let html = `<b>${row.month}</b>　收入 ¥${fmt(row.revenue)}<br/>`
+        params.forEach((point) => {
+          if (point.seriesName === '纯利润率') {
+            html += `${point.marker}${point.seriesName}：${point.value == null ? '—' : point.value + '%'}<br/>`
+          } else {
+            html += `${point.marker}${point.seriesName}：¥${fmt(point.data.amount)}（${point.value}%）<br/>`
+          }
+        })
+        return html
+      },
+    },
+    legend: { type: 'scroll', bottom: 0 },
+    grid: { left: '3%', right: '4%', top: 30, bottom: 54, containLabel: true },
+    xAxis: { type: 'category', data: rows.map((row) => row.month) },
+    yAxis: {
+      type: 'value',
+      max: (value) => Math.max(100, Math.ceil(value.max)),
+      axisLabel: { formatter: '{value}%' },
+    },
+    series: [
+      segment('profit', '纯利润', '#059669'),
+      segment('refund', '退款', '#dc2626'),
+      segment('cost', '采购成本', '#d97706'),
+      segment('platform_fee', '平台扣费', '#8b5cf6'),
+      segment('promotion', '推广费', '#f59e0b'),
+      segment('shipping_insurance', '运费险', '#06b6d4'),
+      segment('other', '其它费用', '#64748b'),
+      {
+        name: '纯利润率',
+        type: 'line',
+        smooth: true,
+        symbolSize: 7,
+        color: '#111827',
+        lineStyle: { width: 2, type: 'dashed' },
+        data: rows.map((row) => (row.margin == null ? null : Number(row.margin.toFixed(2)))),
+      },
+    ],
+  }
+})
+
+const opsInsights = computed(() => {
+  const items = (data.value?.items ?? []).filter(
+    (item) => monthTotal(item, 'revenue') > 0,
+  )
+  if (items.length < 2) return []
+
+  const latest = items[items.length - 1]
+  const previous = items[items.length - 2]
+  const points = (value) => `${value >= 0 ? '+' : ''}${value.toFixed(2)}pct`
+  const rate = (item, field) => {
+    const revenue = monthTotal(item, 'revenue')
+    return revenue > 0 ? (monthTotal(item, field) / revenue) * 100 : null
+  }
+
+  const insights = []
+  const latestMargin = itemMargin(latest)
+  const previousMargin = itemMargin(previous)
+  if (latestMargin != null && previousMargin != null) {
+    const delta = latestMargin - previousMargin
+    insights.push({
+      label: '纯利润率',
+      value: `${latestMargin.toFixed(2)}%`,
+      text: `环比 ${points(delta)}`,
+      tone: delta >= 0 ? 'good' : 'bad',
+    })
+  }
+
+  const costRate = rate(latest, 'cost')
+  const previousCostRate = rate(previous, 'cost')
+  if (costRate != null && previousCostRate != null) {
+    const delta = costRate - previousCostRate
+    insights.push({
+      label: '采购成本率',
+      value: `${costRate.toFixed(2)}%`,
+      text: `环比 ${points(delta)}`,
+      tone: delta <= 0 ? 'good' : 'bad',
+    })
+  }
+
+  const refundRate = rate(latest, 'refund')
+  const previousRefundRate = rate(previous, 'refund')
+  if (refundRate != null && previousRefundRate != null) {
+    const delta = refundRate - previousRefundRate
+    insights.push({
+      label: '退款率',
+      value: `${refundRate.toFixed(2)}%`,
+      text: `环比 ${points(delta)}`,
+      tone: delta <= 0 ? 'good' : 'bad',
+    })
+  }
+
+  return insights
 })
 
 // ── 数据源状态 ─────────────────────────────────────────────────
@@ -350,6 +504,18 @@ async function removeExpense(id) {
 function categoryLabel(c) {
   return CATEGORY_OPTIONS.find(o => o.value === c)?.label || c
 }
+
+function sourceLabel(source) {
+  if (source === 'rpa') return 'RPA'
+  if (source === 'xlsx') return '账单'
+  return '手动'
+}
+
+function sourceTagClass(source) {
+  if (source === 'rpa') return 'tag-rpa'
+  if (source === 'xlsx') return 'tag-xlsx'
+  return 'tag-manual'
+}
 </script>
 
 <template>
@@ -366,11 +532,11 @@ function categoryLabel(c) {
     <div class="filter-row">
       <label class="filter-label">
         开始月份
-        <input v-model="startMonth" type="text" placeholder="YYYY-MM" maxlength="7" class="month-input" />
+        <MonthPicker v-model="startMonth" />
       </label>
       <label class="filter-label">
         结束月份
-        <input v-model="endMonth" type="text" placeholder="YYYY-MM" maxlength="7" class="month-input" />
+        <MonthPicker v-model="endMonth" />
       </label>
       <button class="btn-ghost" @click="startAdd">+ 手动录入费用</button>
     </div>
@@ -528,11 +694,36 @@ function categoryLabel(c) {
         </table>
       </div>
 
+      <!-- Operations view: where revenue goes -->
+      <div class="chart-block">
+        <div class="chart-title">运营视角：每 100 元收入去哪了</div>
+        <div class="chart-sub">
+          堆叠为各项占收入比例；虚线为纯利润率（扣除退款后的净收入口径）。绿色段越大，说明同样的收入留下更多利润。
+        </div>
+        <v-chart
+          v-if="opsStructureOption.series"
+          :option="opsStructureOption"
+          autoresize
+          style="height: 380px; width: 100%;"
+        />
+        <div v-else class="chart-empty">暂无数据</div>
+
+        <div v-if="opsInsights.length" class="insight-grid">
+          <div v-for="insight in opsInsights" :key="insight.label" class="insight-card">
+            <div class="insight-label">{{ insight.label }}</div>
+            <div class="insight-main">
+              <span class="insight-value">{{ insight.value }}</span>
+              <span class="insight-delta" :class="insight.tone">{{ insight.text }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Expense records -->
       <div class="table-block">
-        <div class="chart-title">额外费用明细（RPA 抓取 + 手动录入）</div>
+        <div class="chart-title">额外费用明细（RPA 抓取 + 账单导入 + 手动录入）</div>
         <div v-if="expenses.length === 0" class="chart-empty">
-          暂无费用记录。点击右上角「触发 RPA 抓取」自动获取，或「+ 手动录入费用」。
+          暂无费用记录。点击右上角「触发 RPA 抓取」自动获取、「+ 手动录入费用」，或在基础配置中导入汇总账单。
         </div>
         <table v-else class="data-table">
           <thead>
@@ -555,8 +746,8 @@ function categoryLabel(c) {
               <td>{{ row.sub_category || '—' }}</td>
               <td class="num">¥{{ fmt(row.amount) }}</td>
               <td>
-                <span class="tag" :class="row.source === 'rpa' ? 'tag-rpa' : 'tag-manual'">
-                  {{ row.source === 'rpa' ? 'RPA' : '手动' }}
+                <span class="tag" :class="sourceTagClass(row.source)">
+                  {{ sourceLabel(row.source) }}
                 </span>
               </td>
               <td class="note">{{ row.note || '—' }}</td>
@@ -770,7 +961,27 @@ function categoryLabel(c) {
   margin-bottom: 20px; box-shadow: var(--shadow-outline), var(--shadow-soft);
 }
 .chart-title { font-size: 14px; font-weight: 500; color: var(--text); letter-spacing: 0.14px; margin-bottom: 12px; }
+.chart-sub { margin: -6px 0 10px; font-size: 12px; line-height: 1.7; color: var(--text-muted); }
 .chart-empty { height: 120px; display: flex; align-items: center; justify-content: center; color: var(--text-muted); font-size: 14px; }
+
+.insight-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+  margin-top: 8px;
+}
+.insight-card {
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-subtle);
+}
+.insight-label { font-size: 11.5px; color: var(--text-muted); margin-bottom: 6px; }
+.insight-main { display: flex; align-items: baseline; gap: 8px; }
+.insight-value { font-size: 18px; font-weight: 500; color: var(--text); font-variant-numeric: tabular-nums; }
+.insight-delta { font-size: 12px; font-variant-numeric: tabular-nums; }
+.insight-delta.good { color: #047857; }
+.insight-delta.bad { color: #b91c1c; }
 
 .data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .data-table th, .data-table td { padding: 9px 10px; text-align: left; border-bottom: 1px solid var(--border-subtle); white-space: nowrap; }
@@ -784,6 +995,7 @@ function categoryLabel(c) {
 
 .tag { padding: 2px 8px; border-radius: 9999px; font-size: 11px; font-weight: 500; }
 .tag-rpa { background: rgba(37, 99, 235, 0.1); color: #2563eb; }
+.tag-xlsx { background: rgba(5, 150, 105, 0.1); color: #047857; }
 .tag-manual { background: var(--bg-subtle); color: var(--text-muted); }
 
 .status-msg { text-align: center; padding: 40px; color: var(--text-muted); }

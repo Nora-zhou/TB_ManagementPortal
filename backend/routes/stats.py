@@ -5,9 +5,10 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import text
-from sqlmodel import Session
+from sqlmodel import Session, select
 
 from database import get_session
+from models import StorePlatformExpense
 from schemas import ProfitMonthlyKPI, ProfitMonthlySeries, ProfitMonthlyResponse
 
 router = APIRouter(prefix="/stats", tags=["stats"])
@@ -103,6 +104,14 @@ def profit_monthly(
     """)
     po_rows = session.execute(po_sql, po_params).fetchall()
 
+    # ── Operating expenses (platform fee / promotion / insurance / other) ──
+    expense_stmt = select(StorePlatformExpense)
+    if start_month:
+        expense_stmt = expense_stmt.where(StorePlatformExpense.period_month >= start_month)
+    if end_month:
+        expense_stmt = expense_stmt.where(StorePlatformExpense.period_month <= end_month)
+    expense_rows = session.exec(expense_stmt).all()
+
     # ── Merge into keyed dict ─────────────────────────────────────────────
     data: dict[tuple[int, str], dict] = {}
     for r in so_rows:
@@ -114,6 +123,10 @@ def profit_monthly(
         key = (int(r.store), str(r.month_key))
         bucket = data.setdefault(key, {})
         bucket["cost"] = float(r.cost or 0.0)
+    for expense in expense_rows:
+        key = (int(expense.store), expense.period_month)
+        bucket = data.setdefault(key, {})
+        bucket["cost"] = bucket.get("cost", 0.0) + float(expense.amount or 0.0)
 
     all_months = sorted({mk for (_, mk) in data.keys()})
     if not all_months:

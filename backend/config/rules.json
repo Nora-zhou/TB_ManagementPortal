@@ -1,0 +1,18 @@
+{
+  "version": "v1",
+  "note": "所有业务阈值集中在此。断言是判定层，改完刷新即生效，不需要重采。",
+  "thresholds": {
+    "title_len_min": 5,
+    "title_len_max": 120,
+    "image_count_min": 1,
+    "image_count_max": 10,
+    "image_count_min_recommend": 5,
+    "image_ratio": 0.75,
+    "image_ratio_tolerance": 0.02,
+    "image_ratio_min_share": 1.0,
+    "detail_image_min": 8,
+    "stock_turnover_max_months": 6,
+    "sku_price_spread_max_pct": 100,
+    "review_count_min": 1
+  }
+}

@@ -73,11 +73,71 @@ class ImportResponse(BaseModel):
 # SubOrder schemas (005-product-order-price-trend)
 # ---------------------------------------------------------------------------
 
+# ---------------------------------------------------------------------------
+# 导入后自动核对：库内月度汇总 × 生意参谋月度基准
+# ---------------------------------------------------------------------------
+
+class PlatformMonthStatUpsert(BaseModel):
+    """手工登记的平台侧（生意参谋）月度核心指标。"""
+
+    store: int = Field(default=1, ge=1, le=2)
+    period_month: str = Field(min_length=7, max_length=7, pattern=r"^\d{4}-\d{2}$")
+    pay_amount: Optional[float] = None
+    refund_amount: Optional[float] = None
+    paid_items: Optional[float] = None
+    paid_buyers: Optional[float] = None
+    note: Optional[str] = None
+
+
+class PlatformMonthStatRead(PlatformMonthStatUpsert):
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class MonthCheck(BaseModel):
+    """单个「店铺 × 月份」的核对结果。"""
+
+    month: str
+    store: Optional[int] = None
+
+    # 库内汇总
+    db_pay_amount: float
+    db_refund_amount: float
+    db_items: int
+    db_orders: int
+    days_with_data: int
+    expected_days: int
+
+    # 平台基准（未录入时为 None）
+    platform_pay_amount: Optional[float] = None
+    platform_refund_amount: Optional[float] = None
+    platform_paid_items: Optional[float] = None
+    platform_paid_buyers: Optional[float] = None
+
+    # 差异率（库内 ÷ 平台 - 1，负数=库内偏少）
+    pay_diff_pct: Optional[float] = None
+    refund_diff_pct: Optional[float] = None
+    items_diff_pct: Optional[float] = None
+    buyers_diff_pct: Optional[float] = None
+
+    has_platform: bool = False
+    status: str = "ok"  # ok | warning | gap
+    hints: list[str] = Field(default_factory=list)
+
+
+class ReconcileResponse(BaseModel):
+    store: Optional[int] = None
+    items: list[MonthCheck]
+    checked_at: datetime
+
+
 class SubOrderImportResult(BaseModel):
     imported: int
     updated: int
     skipped: int
     errors: list[str]
+    reconcile: list[MonthCheck] = Field(default_factory=list)
 
 
 class OrderPricePoint(BaseModel):
@@ -584,11 +644,13 @@ class ExpenseInput(BaseModel):
     category: str = Field(pattern="^(platform_fee|promotion|shipping_insurance|other)$")
     sub_category: Optional[str] = Field(default=None, max_length=200)
     amount: float = Field(ge=0.0)
+    transaction_amount: float = Field(default=0.0, ge=0.0)
     note: Optional[str] = Field(default=None, max_length=500)
 
 
 class ExpenseUpdate(BaseModel):
     amount: Optional[float] = Field(default=None, ge=0.0)
+    transaction_amount: Optional[float] = Field(default=None, ge=0.0)
     note: Optional[str] = Field(default=None, max_length=500)
 
 
@@ -599,6 +661,7 @@ class ExpenseRead(BaseModel):
     category: str
     sub_category: Optional[str] = None
     amount: float
+    transaction_amount: float = 0.0
     source: str
     rpa_task_id: Optional[int] = None
     note: Optional[str] = None
@@ -610,6 +673,72 @@ class ExpenseRead(BaseModel):
 class ExpenseListResponse(BaseModel):
     total: int
     items: list[ExpenseRead]
+
+
+class BillImportItem(BaseModel):
+    """汇总账单中的一行，落库为一条 StorePlatformExpense。"""
+    period_month: str
+    business_type: str
+    category: str
+    amount: float
+    transaction_amount: float = 0.0
+    action: str  # imported | updated
+
+
+class BillImportResult(BaseModel):
+    imported: int
+    updated: int
+    errors: list[str] = Field(default_factory=list)
+    items: list[BillImportItem] = Field(default_factory=list)
+    month: Optional[str] = None
+    total_amount: float = 0.0
+
+
+class ExpenseMonthlyItem(BaseModel):
+    """按月的运营费用分类汇总。"""
+    month: str
+    platform_fee: float = 0.0
+    promotion: float = 0.0
+    shipping_insurance: float = 0.0
+    other: float = 0.0
+    total: float = 0.0
+    transaction_amount: float = 0.0
+    roi: Optional[float] = None  # 本月交易额 / 本月费用合计
+
+
+class ExpenseAnalysisItem(BaseModel):
+    """单个费用项（业务大类）的走势与汇总。"""
+    name: str
+    category: str
+    total: float = 0.0
+    share_pct: float = 0.0
+    latest_amount: float = 0.0
+    mom_pct: Optional[float] = None
+    transaction_amount: float = 0.0
+    roi: Optional[float] = None  # 该项交易额 / 该项费用
+    monthly: dict[str, float] = Field(default_factory=dict)
+
+
+class ExpenseAnalysisKPI(BaseModel):
+    total_expense: float = 0.0
+    avg_monthly: float = 0.0
+    month_count: int = 0
+    latest_month: Optional[str] = None
+    mom_pct: Optional[float] = None
+    total_transaction_amount: float = 0.0
+    roi: Optional[float] = None  # 累计交易额 / 累计费用
+    latest_roi: Optional[float] = None
+    top_category: Optional[str] = None
+    top_category_amount: float = 0.0
+    top_item: Optional[str] = None
+    top_item_amount: float = 0.0
+
+
+class ExpenseAnalysisResponse(BaseModel):
+    months: list[str] = Field(default_factory=list)
+    monthly: list[ExpenseMonthlyItem] = Field(default_factory=list)
+    items: list[ExpenseAnalysisItem] = Field(default_factory=list)
+    kpi: ExpenseAnalysisKPI = Field(default_factory=ExpenseAnalysisKPI)
 
 
 class PureProfitMonthItem(BaseModel):

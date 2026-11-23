@@ -1,7 +1,9 @@
 """013-I00：轻量迁移机制。"""
 
+from pathlib import Path
+
 import pytest
-from sqlalchemy import inspect as sa_inspect
+from sqlalchemy import inspect as sa_inspect, text
 
 from db_migrate import (
     MigrationError,
@@ -11,6 +13,13 @@ from db_migrate import (
     make_engine,
     run_migrations,
 )
+
+MIGRATIONS_DIR = Path(__file__).resolve().parents[1] / "migrations"
+
+
+def _expected_migrations() -> list[str]:
+    """仓库里现有的迁移文件（按编号排序），用于断言全部被应用。"""
+    return sorted(path.name for path in MIGRATIONS_DIR.glob("*.sql"))
 
 
 def _columns(engine, table: str) -> set[str]:
@@ -34,8 +43,8 @@ def test_init_creates_tables_and_applies_migrations(tmp_path):
         "inspection_report",
     } <= tables
     # 迁移版本
-    assert current_version(engine) == 1
-    assert [row[1] for row in applied_migrations(engine)] == ["001_add_store_column.sql"]
+    assert current_version(engine) == len(_expected_migrations())
+    assert [row[1] for row in applied_migrations(engine)] == _expected_migrations()
     # store 列由迁移保证存在
     assert "store" in _columns(engine, "product")
 
@@ -46,8 +55,37 @@ def test_migrations_are_idempotent(tmp_path):
 
     assert run_migrations(engine) == []          # 第二次无待应用
     init_db(engine)                              # 重复初始化不报错
-    assert current_version(engine) == 1
-    assert len(applied_migrations(engine)) == 1
+    assert current_version(engine) == len(_expected_migrations())
+    assert len(applied_migrations(engine)) == len(_expected_migrations())
+
+
+def test_expense_transaction_amount_backfilled_from_note(tmp_path):
+    """历史数据里交易额只写在 note，迁移需要回填到 transaction_amount。"""
+    migrations = tmp_path / "mig"
+    migrations.mkdir()
+    source = MIGRATIONS_DIR / "003_expense_transaction_amount.sql"
+    (migrations / source.name).write_text(
+        source.read_text(encoding="utf-8"), encoding="utf-8"
+    )
+
+    engine = make_engine(tmp_path / "t.db")
+    with engine.begin() as conn:
+        conn.execute(
+            text("CREATE TABLE storeplatformexpense (id INTEGER PRIMARY KEY, note TEXT)")
+        )
+        conn.execute(
+            text(
+                "INSERT INTO storeplatformexpense (note) "
+                "VALUES ('账单 A；交易额 6148.96')"
+            )
+        )
+
+    assert run_migrations(engine, migrations) == [source.name]
+    with engine.connect() as conn:
+        row = conn.execute(
+            text("SELECT transaction_amount FROM storeplatformexpense")
+        ).one()
+    assert row[0] == 6148.96
 
 
 def test_ensure_column_on_missing_table_raises(tmp_path):
